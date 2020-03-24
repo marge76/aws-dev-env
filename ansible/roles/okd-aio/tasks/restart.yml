@@ -1,0 +1,31 @@
+- name: restart OpenShift api
+  command: /usr/local/bin/master-restart api
+
+- name: restart OpenShift controller
+  command: /usr/local/bin/master-restart controllers
+
+- name: pausing whilst openshift reboots
+  pause:
+    seconds: 25
+
+- name: daemon-reload
+  systemd:
+    daemon_reload: yes
+
+- name: pausing whilst daemon wakes up
+  pause:
+    seconds: 5
+
+- name: restart the box
+  reboot:
+    reboot_timeout: 300
+
+- name: giving machine a chance to wake up
+  pause:
+    minutes: 5
+
+- name: login as service user
+  command: oc login -u {{ okd.pipeline_user }} -p {{ okdServicePassword }} --insecure-skip-tls-verify
+
+- name: redeploy the registry
+  command: oc rollout latest dc/docker-registry -n default

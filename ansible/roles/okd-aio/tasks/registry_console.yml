@@ -1,0 +1,89 @@
+### Secure the Registry Console (must be performed after secure registry is deployed)
+
+######### This section is WIP - when ran, the 'Cockpit' certificate handler that is built in to the registry console fails to identitfy ciphers to use in TLS handshake with the client.
+
+#### Housekeeping
+
+- name: drop existing secret
+  command: oc delete secret console-secret
+  ignore_errors: yes
+
+- name: delete existing registry console secret volume mount
+  command: oc set volume dc/registry-console --remove --name=console-secret
+  ignore_errors: yes
+
+- name: pause registry console deployment
+  command: oc rollout pause dc/registry-console
+  ignore_errors: yes
+
+- name: clear raw cert file
+  file:
+    path: /tmp/registry_console_certificate_raw.json
+    state: absent
+
+- name: clear registry console cert file
+  file:
+    path: /tmp/registry_console_certificate.crt
+    state: absent
+
+- name: clear registry console issuing ca cert file
+  file:
+    path: /tmp/registry_console_issuing_ca.crt
+    state: absent
+
+- name: clear registry console root cert file
+  file:
+    path: /tmp/registry_console_ca_chain.crt
+    state: absent
+
+- name: clear registry console key file
+  file:
+    path: /etc/origin/master/registry-console-key.key
+    state: absent
+
+- name: clear combined certificate file
+  file:
+    path: /etc/origin/master/console.cert
+    state: absent
+
+- name: grab the IP of the registry
+  shell: "oc get service docker-registry --template={% raw %}'{{.spec.clusterIP}}'{% endraw %}"
+  register: registry_ip
+
+## Fetch
+
+- name: fetch registry console Certificate from vault
+  shell: curl -k --header "X-Vault-Token:{{ vaultRootToken }}" --request POST --data '{"common_name":"docker-registry-default.apps.okd.{{ okdDomain }}","ip_sans":"{{ registry_ip.stdout }}","alt_names":"docker-registry.default.svc,docker-registry.default.svc.cluster.local", "ttl":"{{ okd.cert_ttl}}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{vault.okd_role_name}} >> registry_console_certificate_raw.json
+  args:
+    chdir: /tmp
+
+# ### Process
+
+- name: extract registry certificate information from json
+  shell: jq -r ".data.certificate" /tmp/registry_console_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/registry_console_certificate.crt
+
+- name: extract registry certificate information from json
+  shell: jq -r ".data.issuing_ca" /tmp/registry_console_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/registry_console_issuing_ca.crt
+
+- name: extract registry certificate information from json
+  shell: jq -r ".data.ca_chain | .[0]" /tmp/registry_console_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/registry_console_ca_chain.crt
+
+- name: extract registry private key information from jsonclear
+  shell: jq -r ".data.private_key" /tmp/registry_console_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /etc/origin/master/registry-console-key.key
+
+#### Create secret
+
+- name: add certificates to /etc/secrets/registry/registryconsole.cert
+  shell: cat  /etc/origin/master/registry-console-key.key /tmp/registry_console_certificate.crt /tmp/registry_console_issuing_ca.crt /tmp/registry_console_ca_chain.crt > /etc/origin/master/console.cert
+
+- name: create registry console secret
+  shell: oc create secret generic console-secret --from-file=/etc/origin/master/console.cert
+
+- name: create secret link with default project
+  command: oc secrets link default console-secret
+
+- name: create secret volume and add it to the registry console deployment config
+  shell: oc set volume dc/registry-console --add --type=secret --secret-name=console-secret -m /etc/cockpit/ws-certs.d --name=console-secret
+
+- name: resume registry console deployment
+  command: oc rollout resume dc/registry-console

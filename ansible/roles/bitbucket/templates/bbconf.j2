@@ -1,0 +1,16 @@
+# Listens on port {{ bitbucket.port }} and converts traffic to https and pushes to port {{ bitbucket.HTTPSecureServerPort }}
+server.port={{ bitbucket.port }}
+server.redirect-port={{ bitbucket.HTTPSecureServerPort }}
+server.require-ssl=true
+# Listens on port 8443 for SSL connections
+server.additional-connector.1.port={{ bitbucket.HTTPSecureServerPort }}
+server.additional-connector.1.address={{ inventory_hostname }}
+server.additional-connector.1.secure=true
+server.additional-connector.1.scheme=https
+server.additional-connector.1.protocol=TLS
+server.additional-connector.1.ssl.enabled=true
+server.additional-connector.1.ssl.key-store={{ bitbucket.keystoreFile }}
+server.additional-connector.1.ssl.key-store-password={{ bitbucket.keystorePass }}
+server.additional-connector.1.ssl.key-password={{ bitbucket.keystorePass }}
+server.additional-connector.1.ssl.key-alias={{ bitbucket.host }}
+server.additional-connector.1.ssl.key-store-type=jks

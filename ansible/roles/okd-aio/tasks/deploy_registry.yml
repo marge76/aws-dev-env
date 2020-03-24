@@ -1,0 +1,23 @@
+- name: Login to OC
+  command: oc login -u admin -p "{{ okdUserPassword }}"
+
+- name: Set project to default
+  command: oc project default
+
+- name: create registry user in HTPASSWD
+  htpasswd:
+    path: /etc/origin/master/htpasswd
+    name: "{{ okd.pipeline_user }}"
+    password: "{{ okdServicePassword }}"
+
+- name: add view registry role to {{ okd.pipeline_user }}
+  command: oc policy add-role-to-user registry-viewer {{ okd.pipeline_user }}
+
+- name: add edit registry role to {{ okd.pipeline_user }}
+  command: oc policy add-role-to-user registry-editor {{ okd.pipeline_user }}
+
+- name: assign admin policy to {{ okd.pipeline_user }}
+  command: oc create clusterrolebinding registry-controller --clusterrole=cluster-admin --user={{ okd.pipeline_user }}
+
+- name: deploy docker registry
+  command: oc adm registry --service-account=registry --config=/etc/origin/master/admin.kubeconfig

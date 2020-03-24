@@ -1,0 +1,9 @@
+
+# [workspaces]
+<ip address> ansible_user=<active-directory-name>\\<user> ansible_ssh_pass=<ssh-password> ansible_become_pass=<sudo-password-for-user>
+# Add workspace IPs here e.g. 172.16.2.23 ansible_ssh_user=ad\\johnd ansible_ssh_pass=Changeit1! ansible_become_pass=Changeit1!
+
+# DO NOT CHANGE--------------------------
+[localworkspace]
+localhost ansible_connection=local
+# ---------------------------------------

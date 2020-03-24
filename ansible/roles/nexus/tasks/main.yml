@@ -1,0 +1,119 @@
+- name: add user
+  user:
+    name: nexus
+
+- name: Move JDK installation file over to EC2
+  copy:
+    src: "jdk-8u211-linux-x64.rpm"
+    dest: /tmp
+
+- name: install jdk
+  yum:
+    name: /tmp/jdk-8u211-linux-x64.rpm
+    state: present
+
+- name: install Nexus OSS
+  get_url:
+    url: http://download.sonatype.com/nexus/3/{{ nexus.version }}-unix.tar.gz
+    dest: /tmp/nexus.tar.gz
+
+- name: extract /tmp/nexus.tar.gz
+  unarchive:
+    src: /tmp/nexus.tar.gz
+    dest: /opt/
+    remote_src: yes
+
+- name: rename/move nexus folder to nexus directory
+  command: mv -n /opt/{{ nexus.version }} /opt/nexus
+
+- name: make nexus user the owner and group of the executable files
+  file:
+    path: /opt/
+    owner: nexus
+    group: nexus
+    recurse: yes
+
+- name: set the user account which will run the Nexus service
+  template:
+    src: "nexus.rc"
+    dest: /opt/nexus/bin/nexus.rc
+
+- name: create a service file
+  template:
+    src: "nexus.service"
+    dest: "/etc/systemd/system/nexus.service"
+
+- name: export NEXUS_HOME
+  shell: echo 'export NEXUS_HOME="/opt/nexus"'>> /home/nexus/.bashrc
+
+- name: start the service
+  become: yes
+  systemd:
+    name: nexus
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+##########  Enable SSL ##############
+- name: Creates nexus.properties dir
+  file:
+    path: /opt/sonatype-work/nexus3/etc/
+    state: directory
+    owner: nexus
+    group: nexus
+
+- name: update nexus properties to enable SSL
+  template:
+    src: nexus.properties
+    dest: /opt/sonatype-work/nexus3/etc/nexus.properties
+
+- name: set SSL properties
+  template:
+    src: jetty-https.xml
+    dest: /opt/nexus/etc/jetty/jetty-https.xml
+
+##########  Get SSL certificate and Key details ##############
+- name: request a certificate from vault
+  shell: curl --header "X-Vault-Token:{{ lookup('file', '/home/{{ workspaceUser }}/SecureFiles/{{ vault.host }}/tmp/key6.json') }}" --request POST --data '{"common_name":"{{ nexus.host }}","ip_sans":"{{ nexus.ip }}", "ttl":"{{ vault.cert_ttl }}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{ vault.role_name }} >> certificate_raw.json -k
+  args:
+    chdir: /tmp
+
+- name: extract certificate information from json
+  shell: jq -r ".data.certificate" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/certificate.crt
+
+- name: extract private key information from json
+  shell: jq -r ".data.private_key" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/priv_key.key
+
+- name: Combine the nexus.crt and nexus.key files in to a .p12 file
+  expect:
+    echo: yes
+    command: openssl pkcs12 -export -in /tmp/certificate.crt -inkey /tmp/priv_key.key -name {{ nexus.host }} -out /tmp/nexus.p12
+    responses:
+      (?i)password: "{{ sudo_pass }}"
+
+- name: Import the combined certificate and key file into the keystore
+  expect:
+    echo: yes
+    command: keytool -importkeystore -srckeystore /tmp/nexus.p12 -destkeystore /opt/nexus/etc/ssl/keystore.jks -srcstoretype pkcs12
+    responses:
+      (?i)password: "{{ sudo_pass }}"
+      (?i)overwrite: "yes"
+
+- name: Import a pkcs12 keystore with a specified alias, create it if it doesn't exist
+  java_cert:
+    pkcs12_path: /tmp/nexus.p12
+    pkcs12_password: "{{ sudo_pass }}"
+    pkcs12_alias: "{{ nexus.host }}"
+    cert_alias: "{{ nexus.host }}"
+    keystore_path: /opt/nexus/etc/ssl/keystore.jks
+    keystore_pass: "{{ sudo_pass }}"
+    keystore_create: yes
+    state: present
+
+- name: restart the service
+  become: yes
+  systemd:
+    name: nexus
+    enabled: yes
+    state: restarted
+    daemon_reload: yes

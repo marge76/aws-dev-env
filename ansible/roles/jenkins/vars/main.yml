@@ -1,0 +1,10 @@
+jenkins:
+  host: jenkins.{{ domain }}
+  JAVA_OPTIONS: "-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false"
+  ip: '{{ ansible_facts.eth0.ipv4.address }}'
+  https_port: 8443
+  keystore_location: "/var/lib/jenkins/host.jks"
+  config_file_location: "/etc/sysconfig/jenkins"
+  proxy: squid.{{ domain }}
+  proxy_http_port: 3128
+  proxy_https_port: 3129

@@ -1,0 +1,39 @@
+- name: Install SSM and Cloudwatch Control and Augit agents
+  hosts: squid-proxy-tools
+  gather_facts: true
+  become: true
+  serial: 1
+  tasks:
+    - import_role:
+        name: ssm-cloudwatch
+
+- name: Install Squid Proxy for tools
+  hosts: squid-proxy-tools
+  gather_facts: true
+  become: true
+  serial: 1
+  tasks:
+    - import_role:
+        name: squid-proxy
+
+- name: Install Squid's root certificates to all tools EC2s
+  hosts:
+    - jira-server
+    - bitbucket-server
+    - confluence-server
+    - jenkins-server
+  gather_facts: true
+  become: true
+  serial: 1
+  tasks:
+    - import_role:
+        name: squid_certification_tools
+
+- name: Lockdown the proxy
+  hosts: squid-proxy-tools
+  gather_facts: true
+  become: true
+  serial: 1
+  tasks:
+  - import_role:
+      name: squid-proxy-lockdown

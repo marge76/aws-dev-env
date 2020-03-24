@@ -1,0 +1,40 @@
+- name: Login to OC
+  command: oc login -u admin -p "{{ okdUserPassword }}"
+
+- name: Create a new project
+  command: oc new-project {{ sonarqube.root_proj_name }}
+
+- name: Set project to new project created above
+  command: oc project {{ sonarqube.root_proj_name }}
+
+- name: Create a new postgres persistent app
+  command: oc new-app postgresql-persistent --param DATABASE_SERVICE_NAME={{ sonarqube.sonarServiceName }}  POSTGRESQL_USER={{ sonarqube.postgresUser }} --param POSTGRESQL_PASSWORD={{ sonarqube.postgresPassword }} --param POSTGRESQL_DATABASE={{ sonarqube.postgresDBName }} --param VOLUME_CAPACITY=4Gi -lapp={{ sonarqube.postgresAppName }}
+
+- name: Create a new app in OKD for Sonar Cube
+  command: oc new-app docker.io/wkulhanek/sonarqube:latest -e SONARQUBE_JDBC_USERNAME={{ sonarqube.postgresUser }} -e SONARQUBE_JDBC_PASSWORD={{ sonarqube.postgresPassword }} -e SONARQUBE_JDBC_URL=jdbc:postgresql://{{ sonarqube.sonarServiceName }}/{{ sonarqube.postgresDBName }} --name={{ sonarqube.sonaqubeAppName }}
+
+- name: Expose SonarQube service
+  command: oc expose service {{ sonarqube.sonaqubeAppName }} --port=9000
+
+- name: Copy persistent volume file to destination
+  copy:
+    src: sonarqubeVol.yaml
+    dest: sonarqubeVol.yaml
+
+- name: Create persistent volume
+  command: oc create -f sonarqubeVol.yaml
+
+- name: Remove temp volumes
+  command: oc set volume dc/{{ sonarqube.sonaqubeAppName }} --remove --name={{ sonarqube.sonaqubeAppName }}-volume-1
+
+- name: Set persistent volume for plugin configurations
+  command: oc set volume dc/{{ sonarqube.sonaqubeAppName }} --add --overwrite --name=sonarqube-plugins-vol --type=persistentVolumeClaim --claim-name=sonarqube-pvc --mount-path=/opt/sonarqube/data
+
+- name:  Retrieve branch plugin and place in pod
+  shell: oc exec $(oc get pods --selector app={{ sonarqube.sonaqubeAppName }} -o jsonpath='{range .items[*].metadata}{.name}{end}') \
+    -- curl -JLO https://github.com/mc1arke/sonarqube-community-branch-plugin/releases/download/1.0.2/sonarqube-community-branch-plugin-1.0.2.jar
+
+- name:  Move jar to plugins dir
+  shell: oc exec $(oc get pods --selector app={{ sonarqube.sonaqubeAppName }} -o jsonpath='{range .items[*].metadata}{.name}{end}') \
+    -- mv sonarqube-community-branch-plugin-1.0.2.jar /opt/sonarqube/data/extensions/plugins
+

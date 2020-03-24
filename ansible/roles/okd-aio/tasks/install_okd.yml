@@ -1,0 +1,15 @@
+- name: Move scripts over to EC2
+  copy:
+    src: "{{ item }}"
+    dest: /tmp
+  loop:
+    - inventory.ini
+    - vol.yaml
+
+- name: make .sh from template
+  template:
+    src: installOpenShift.j2
+    dest: /tmp/install-openshift.sh
+
+- name: Install OKD
+  command: sh /tmp/install-openshift.sh

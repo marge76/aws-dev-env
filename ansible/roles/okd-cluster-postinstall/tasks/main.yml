@@ -1,0 +1,15 @@
+- name: copy volume template to remote hosts
+  copy:
+    src: vol.yaml
+    dest: /tmp/vol.yaml
+    owner: root
+
+- name: create persistent volumes
+  script: volumes.sh
+
+- name: restart nodes
+  command: systemctl restart origin-node
+
+- name: wait for nodes to come up
+  pause:
+    seconds: 60

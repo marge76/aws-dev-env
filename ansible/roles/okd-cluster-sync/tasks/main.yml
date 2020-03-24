@@ -1,0 +1,43 @@
+- name: install rsync on remote nodes
+  yum:
+    name: rsync
+    state: latest
+
+- name: Create /etc/docker/certs.d
+  file:
+    path: /etc/docker/
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+
+- name: Create /etc/docker/certs.d/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}
+  file:
+    path: /etc/docker/certs.d/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}/
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+
+- name: push registry certificates to nodes
+  synchronize: 
+    src: /tmp/okd/
+    dest: /etc/docker/certs.d
+    dirs: yes 
+    recursive: yes
+    mode: push
+
+- name: copy registry ca to box trust store
+  copy:
+    src: /etc/docker/certs.d/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}/ca.crt
+    dest: /etc/pki/ca-trust/source/anchors/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}.crt
+    remote_src: yes
+
+- name: update box trust store
+  command: update-ca-trust enable
+
+- name: restart daemon
+  shell: systemctl daemon-reload
+
+- name: restart docker on nodes
+  command: systemctl restart docker

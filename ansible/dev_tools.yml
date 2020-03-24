@@ -1,0 +1,151 @@
+- name: Install SSM and Cloudwatch Control and Audit agents
+  hosts:
+    - jira-server
+    - bitbucket-server
+    - confluence-server
+    - jenkins-server
+    - squid-proxy-tools
+    - squid-proxy-workspace
+  gather_facts: true
+  become: true
+  serial: 1
+  tasks:
+    - import_role:
+        name: ssm-cloudwatch
+- name: Install Squid Proxy for tools
+  hosts: squid-proxy-tools
+  gather_facts: true
+  become: true
+  serial: 1
+  tasks:
+    - import_role:
+        name: squid-proxy
+
+- name: Install Squid's root certificates to all tools EC2s
+  hosts:
+    - jira-server
+    - bitbucket-server
+    - confluence-server
+    - jenkins-server
+  gather_facts: true
+  become: true
+  serial: 1
+  tasks:
+    - import_role:
+        name: squid_certification_tools
+
+- name: Install Squid's root certificates to Workspaces
+  hosts:
+    - workspaces
+    - localworkspace
+  gather_facts: true
+  become: true
+  serial: 1
+  tasks:
+    - import_role:
+        name: squid_certification_workspaces
+
+- name: Change Squid proxy Server's setting to intercept all traffic
+  hosts:
+    - squid-proxy-tools
+    - squid-proxy-workspace
+  gather_facts: true
+  become: true
+  serial: 1
+  tasks:
+    - import_role:
+        name: squid-proxy-lockdown
+
+#### ALL TRAFFIC FLOWS THROUGH SQUID FROM THIS POINT ####
+
+- name: Install common tools
+  hosts:
+    - jira-server
+    - bitbucket-server
+    - confluence-server
+    - vault-server
+    - jenkins-server
+    - squid-proxy
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: common_tools
+
+- name: Install Git
+  hosts:
+    - bitbucket-server
+    - jenkins-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: git
+
+- name: Install psql
+  hosts:
+    - jira-server
+    - bitbucket-server
+    - confluence-server
+    - vault-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: postgresql
+
+- name: Install and set up Vault
+  hosts: vault-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: vault
+
+- name: Install Confluence
+  hosts: confluence-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: confluence
+
+- name: Install BitBucket
+  hosts: bitbucket-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: bitbucket
+
+- name: Install Jira
+  hosts: jira-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: jira
+
+- name: Install Jenkins
+  hosts: jenkins-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: jenkins
+
+- name: Install Workspace tools
+  hosts: workspaces
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: workspace
+
+- name: Get certificates for all user workspaces
+  hosts: localworkspace
+  gather_facts: true
+  become: no
+  tasks:
+    - import_role:
+        name: workspace_crt_keys

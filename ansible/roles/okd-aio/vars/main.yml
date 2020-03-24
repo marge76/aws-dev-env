@@ -1,0 +1,8 @@
+okd:
+  URL: https://github.com/gshipley/installcentos.git #download link
+  pvs: "true"
+  domain: "{{ inventory_hostname }}"
+  version: "3.11"
+  ip_address: "{{ ansible_default_ipv4.address }}" # "{{ ansible_default_ipv4.address }}" for only using 1 host
+  api_port: 8443
+  cert_ttl: 1000h

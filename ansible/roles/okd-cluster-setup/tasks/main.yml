@@ -1,0 +1,89 @@
+- name: locally copy the okd ca certificate to /tmp/
+  command: cp /home/{{ workspaceUser }}/SecureFiles/vault.{{ domain }}/tmp/okd_ca_cert.crt /tmp/okd_ca_cert.crt
+  delegate_to: 127.0.0.1
+
+- name: locally copy the okd ca key to /tmp/
+  command: cp /home/{{ workspaceUser }}/SecureFiles/vault.{{ domain }}/tmp/okd_ca_key.key /tmp/okd_ca_key.key
+  delegate_to: 127.0.0.1
+
+- name: update yum
+  yum:
+    name: "*"
+    state: latest
+
+- name: install base packages
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - wget
+      - git
+      - nano
+      - net-tools
+      - docker
+      - bind-utils
+      - yum-utils
+      - kexec-tools
+      - httpd-tools
+      - iptables-services
+      - bash-completion
+      - bridge-utils
+      - sos
+      - psacct
+      - openssl-devel
+      - NetworkManager
+      - python-devel
+      - python-passlib
+      - java-1.8.0-openjdk-headless
+      - "@Development Tools"
+      - epel-release
+      - rsync
+
+- name: start NetworkManager
+  shell: systemctl start NetworkManager
+
+- name: enable NetworkManager on startup
+  shell: systemctl enable NetworkManager
+
+- name: template setup script to hosts
+  template:
+    src: setup.j2
+    dest: /tmp/setup.sh
+    owner: root
+    mode: +x
+
+- name: run setup script on hosts
+  command: sh /tmp/setup.sh
+
+- name: set hostname equal to hostname in inventory
+  shell: hostnamectl set-hostname {{ inventory_hostname }}
+
+- name: set hostname in /etc/sysconfig/network
+  lineinfile:
+    path: /etc/sysconfig/network
+    line: HOSTNAME={{ inventory_hostname }}
+
+
+- name: Disable cloud hostname
+  lineinfile: "dest=/etc/cloud/cloud.cfg
+               line='preserve_hostname: true'
+               state=present"
+
+- name: enable docker on startup
+  shell: systemctl enable docker
+
+- name: start docker
+  shell: systemctl start docker
+
+- name: install pip
+  easy_install:
+    name: pip
+    state: latest
+
+- name: install pyOpenSSL
+  pip:
+    name: pyOpenSSL
+
+- name: install pyOpenSSL
+  pip:
+    name: passlib

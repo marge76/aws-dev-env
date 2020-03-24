@@ -1,0 +1,8 @@
+- name: Login to OC
+  command: oc login -u admin -p "{{ okdUserPassword }}"
+
+- name: Set project to default
+  command: oc project default
+
+- name: deploy a router
+  command: oc adm router router --replicas=1 --service-account=router

@@ -1,0 +1,124 @@
+######### Fetch Vault certificate, process it and import ##############
+########Housekeeping
+
+- name: Delete /etc/secrets
+  file:
+    path: /etc/secrets/
+    state: absent
+
+- name: Delete /etc/docker/certs.d
+  file:
+    path: /etc/docker/certs.d
+    state: absent
+
+- name: Clear private key file if already exists
+  file:
+    state: absent
+    path: "/tmp/priv_key.key"
+
+- name: If the certificate exists, destroy it.
+  file:
+    state: absent
+    path: "/etc/origin/master/consolecert.crt"
+
+- name: If the key exists, destroy it.
+  file:
+    state: absent
+    path: "/etc/origin/master/consolekey.key"
+
+- name: remove registry temp certificate files if they exist
+  file:
+    path: /tmp/registry_certificate_raw.json
+    state: absent
+
+- name: remove console temp certificate files if they exist
+  file:
+    path: /tmp/console_certificate_raw.json
+    state: absent
+
+- name: remove registry cert file
+  file:
+    path: /etc/secrets/registry/registrycert
+    state: absent
+
+- name: remove registry key file
+  file:
+    path: /etc/secrets/registry/registrykey
+    state: absent
+
+- name: clear docker trust store client.cert
+  file:
+    path: /etc/docker/certs.d/client.cert
+    state: absent
+
+- name: clear docker trust store client.key
+  file:
+    path: /etc/docker/certs.d/client.key
+    state: absent
+
+- name: clear docker trust store ca.crt
+  file:
+    path: /etc/docker/certs.d/ca.crt
+    state: absent
+
+- name: clear pki ca certs
+  file:
+    path: /etc/pki/ca-trust/source/anchors/docker-registry-default.apps.okd.{{ okdDomain }}.cert
+    state: absent
+
+- name: clear pki ca certs
+  file:
+    path: /etc/pki/ca-trust/source/anchors/docker-registry-default.apps.okd.{{ okdDomain }}.key
+    state: absent
+
+- name: clear pki ca.crt
+  file:
+    path: /etc/pki/ca-trust/source/anchors/docker-registry-default.apps.okd.{{ okdDomain }}.crt
+    state: absent
+
+##  Create secrets directories
+
+- name: Create /etc/secrets
+  file:
+    path: /etc/secrets/
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+
+- name: Create etc/secrets/registry
+  file:
+    path: /etc/secrets/registry
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+
+# Fetch Certs
+
+- name: fetch console Certificate from vault
+  shell: curl -k --header "X-Vault-Token:{{ vaultRootToken }}" --request POST --data '{"common_name":"console.okd.{{ okdDomain }}","ip_sans":"{{ okd.ip_address }}", "ttl":"{{ okd.cert_ttl}}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{vault.okd_role_name}} >> console_certificate_raw.json
+  args:
+    chdir: /tmp
+
+- name: fetch registry Certificate from vault
+  shell: curl -k --header "X-Vault-Token:{{ vaultRootToken }}" --request POST --data '{"common_name":"docker-registry-default.apps.okd.{{ okdDomain }}","ip_sans":"{{ okd.ip_address }}","alt_names":"docker-registry.default.svc,docker-registry.default.svc.cluster.local:5000", "ttl":"{{ okd.cert_ttl}}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{vault.okd_role_name}} >> registry_certificate_raw.json
+  args:
+    chdir: /tmp
+
+#### Process
+
+### OKD Console
+- name: extract console certificate information from json
+  shell: jq -r ".data.certificate" /tmp/console_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /etc/origin/master/consolecert.crt
+
+- name: extract console private key information from json
+  shell: jq -r ".data.private_key" /tmp/console_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /etc/origin/master/consolekey.key
+
+### Internal Registry
+
+- name: extract registry certificate information from json
+  shell: jq -r ".data.certificate" /tmp/registry_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /etc/secrets/registry/registrycert
+
+- name: extract registry private key information from jsonclear
+  shell: jq -r ".data.private_key" /tmp/registry_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /etc/secrets/registry/registrykey

@@ -1,0 +1,5 @@
+psql:
+  dbName: "postgresDB"
+  dbType: "postgres72"
+  schemaType: "public"
+  dbUser: "db_user"

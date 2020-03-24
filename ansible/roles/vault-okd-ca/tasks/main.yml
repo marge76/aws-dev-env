@@ -1,0 +1,95 @@
+- name: Unseal vault
+  shell: |
+    vault operator unseal {{ vault_key1 }}
+    vault operator unseal {{ vault_key2 }}
+    vault operator unseal {{ vault_key3 }}
+  environment:
+    VAULT_ADDR: https://vault.{{ domain }}:8200
+
+- name: Login to Vault
+  command: vault login {{ vaultRootToken }}
+  environment:
+    VAULT_ADDR: https://vault.{{ domain }}:8200
+
+- name: Enable pki engine for okd_intermediate
+  command: vault secrets enable -path={{ vault.okd_ca }} pki
+  environment:
+    VAULT_ADDR: https://vault.{{ domain }}:8200
+  ignore_errors: yes
+
+- name: set max ttl
+  command: vault secrets tune -max-lease-ttl=87600h {{ vault.okd_ca }}
+  environment:
+    VAULT_ADDR: https://vault.{{ domain }}:8200
+  ignore_errors: yes
+
+- name: Generate signing request for okd_ca
+  command: >
+    vault write -field=csr {{ vault.okd_ca }}/intermediate/generate/exported
+      common_name="{{ okd_ca_common_name }}"
+      ttl="87600h"
+      format="pem_bundle"
+      private_key_format="pem"
+      key_type="rsa"
+      key_bits=4096
+      organization="{{ vault.project_name }}"
+      country="GB"
+  register: SigningRequest
+  environment:
+    VAULT_ADDR: https://vault.{{ domain }}:8200
+  ignore_errors: yes
+
+- name: Save Signing request and private key to file
+  copy:
+    content: "{{ SigningRequest.stdout }}"
+    dest: /tmp/pki_okd_intermediate.pem
+  ignore_errors: yes
+
+- name: extract private key from file
+  shell: openssl pkey -in /tmp/pki_okd_intermediate.pem -out /tmp/okd_ca_key.key
+
+- name: extract csr from file
+  shell: openssl req -in /tmp/pki_okd_intermediate.pem -out /tmp/okd_ca_csr.csr
+
+- name: Sign the request with root ca
+  command: >
+    vault write -field=certificate pki/root/sign-intermediate
+      csr=@/tmp/okd_ca_csr.csr
+      format=pem_bundle
+  register: tempSignRequest
+  environment:
+    VAULT_ADDR: https://vault.{{ domain }}:8200
+  ignore_errors: yes
+
+- name: Save Signing request to file
+  copy:
+    content: "{{ tempSignRequest.stdout }}"
+    dest: /tmp/okd_ca_cert.crt
+  ignore_errors: yes
+
+- name: Add signed int cert back into vault
+  command: >
+    vault write {{ vault.okd_ca }}/intermediate/set-signed
+    certificate=@/tmp/okd_ca_cert.crt
+  environment:
+    VAULT_ADDR: https://vault.{{ domain }}:8200
+  ignore_errors: yes
+
+- name: Move cert and key file over to local machine
+  fetch:
+    src: /tmp/{{ item }}
+    dest: /home/{{ workspaceUser }}/SecureFiles
+  with_items:
+    - okd_ca_cert.crt
+    - okd_ca_key.key
+
+- name: Upload okd certificate for browsers to S3 bucket
+  become: yes
+  aws_s3:
+    mode: put
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    aws_region: "{{ aws_region }}"
+    bucket: "{{ okd.bucketName }}"
+    src: "/tmp/okd_ca_cert.crt"
+    object: /browser/okd_ca_cert.crt

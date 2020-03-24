@@ -1,0 +1,70 @@
+[all:vars]
+ansible_user=centos
+ansible_private_key_file='{{ private_key_file }}'
+ansible_become=yes
+
+
+[masters]
+okd.test.cedc.cloud openshift_schedulable=true # for multi node clusters, set schedulable=false
+
+
+[etcd]
+okd.test.cedc.cloud
+
+[nodes]
+okd.test.cedc.cloud openshift_node_group_name="node-config-master-infra"
+okd-node.test.cedc.cloud openshift_node_group_name="node-config-compute" openshift_schedulable=true 
+
+[OSEv3:children]
+masters
+nodes
+etcd
+
+[registry-access] # add below all hostnames of servers that will access the Docker registry
+jenkins.tools.cedc.cloud
+
+###### INSTALLATION PARAMETERS - BE CAREFUL IF EDITING BELOW
+
+[OSEv3:vars]
+openshift_deployment_type=origin
+openshift_release="3.11"
+openshift_hosted_manage_router=true
+pid_file_path="/var/run/docker.pid"
+
+openshift_disable_check=disk_availability,docker_storage,memory_availability,docker_image_availability
+osm_use_cockpit=true
+
+# Configure custom ca certificate
+openshift_master_ca_certificate={'certfile': '/tmp/okd_ca_cert.crt', 'keyfile': '/tmp/okd_ca_key.key'}
+
+# Debug level for all OpenShift components (Defaults to 2)
+debug_level=2
+
+# default subdomain to use for exposed routes, you should have wildcard dns
+# for *.apps.test.example.com that points at your infra nodes which will run
+# your router
+openshift_master_default_subdomain=apps.okd.test.cedc.cloud
+
+#Set cluster_hostname to point at your load balancer
+openshift_master_cluster_hostname=okd.test.cedc.cloud
+
+openshift_public_hostname=console.okd.test.cedc.cloud
+
+# htpasswd auth
+openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider'}]
+openshift_master_htpasswd_file='/etc/origin/master/htpasswd'
+openshift_master_htpasswd_users={'admin': '$apr1$rxeHqcZv$dEreXx3EQY6bLlvus5oFP0'}
+
+# Configure master API and console ports.
+openshift_master_api_port=8443
+openshift_master_console_port=8443
+
+# By default metrics are not automatically deployed, set this to enable them
+openshift_metrics_install_metrics=true
+
+# Configure the multi-tenant SDN plugin (default is 'redhat/openshift-ovs-subnet')
+os_sdn_network_plugin_name='redhat/openshift-ovs-multitenant'
+
+# Enable origin repos that point at Centos PAAS SIG, defaults to true, only used
+# by openshift_deployment_type=origin
+openshift_enable_origin_repo=true

@@ -1,0 +1,223 @@
+# #### Housekeeping
+
+- name: delete existing registry secrets
+  command: oc delete secret registry-certificates
+  ignore_errors: yes
+
+- name: delete existing registry secret volume mount
+  command: oc set volume dc/docker-registry --remove --name=registry-certificates
+  ignore_errors: yes
+
+- name: delete existing registry secrets
+  command: oc delete secret our-registry-secrets
+  ignore_errors: yes
+
+- name: delete existing registry secret volume mount
+  command: oc set volume dc/docker-registry --remove --name=our-registry-secrets
+  ignore_errors: yes
+
+# # ##### Secure the registry
+
+- name: create openshift secret from registry certificates
+  command: oc create secret generic our-registry-secrets \
+    --from-file=/etc/secrets/registry/registrycert \
+    --from-file=/etc/secrets/registry/registrykey
+
+- name: creating secrets link for registry
+  command: oc secrets link registry our-registry-secrets
+
+- name: creating secrets link for default project
+  command: oc secrets link default our-registry-secrets
+
+- name: pause registry automatic rollout
+  command: oc rollout pause dc/docker-registry
+  ignore_errors: yes
+
+- name: create volume for registry with our secrets
+  command: oc set volume dc/docker-registry --add --type=secret \
+    --secret-name=our-registry-secrets -m /etc/secrets/registry --name=our-registry-secrets
+
+- name: set env vars for registry secrets
+  command: oc set env dc/docker-registry \
+    REGISTRY_HTTP_TLS_CERTIFICATE=/etc/secrets/registry/registrycert \
+    REGISTRY_HTTP_TLS_KEY=/etc/secrets/registry/registrykey
+
+- name: patch the registry livenessProbe ready for HTTPS
+  command:
+    'oc patch dc/docker-registry -p ''{"spec": {"template": {"spec": {"containers":[{
+    "name":"registry",
+    "livenessProbe":  {"httpGet": {"scheme":"HTTPS"}}}]}}}}'''
+
+- name: patch the registry livenessProbe ready for HTTPS
+  command:
+    'oc patch dc/docker-registry -p ''{"spec": {"template": {"spec": {"containers":[{
+    "name":"registry",
+    "readinessProbe":  {"httpGet": {"scheme":"HTTPS"}}}]}}}}'''
+
+- name: resume registry automatic rollout
+  command: oc rollout resume dc/docker-registry
+
+######## Add the registry cert to Docker truststore
+
+- name: check that /etc/docker/certs.d/docker-registry-default.apps.okd.{{ okdDomain }} exists
+  stat:
+    path: /etc/docker/certs.d/docker-registry-default.apps.okd.{{ okdDomain }}
+  register: stat_result
+
+- name: check that /etc/docker/certs.d/{{ okd.ip_address }} exists
+  stat:
+    path: /etc/docker/certs.d/{{ okd.ip_address }}
+  register: stat_result_ip
+
+- name: check that /etc/docker/certs.d/docker-registry.default.svc exists
+  stat:
+    path: /etc/docker/certs.d/docker-registry.default.svc
+  register: stat_result_def
+
+- name: check that /etc/docker/certs.d/docker-registry.default.svc.cluster.local:5000 exists
+  stat:
+    path: /etc/docker/certs.d/docker-registry.default.svc.cluster.local:5000
+  register: stat_result_svc
+
+- name: Create /etc/docker/certs.d/docker-registry-default.apps.okd.{{ okdDomain }}
+  file:
+    path: /etc/docker/certs.d/docker-registry-default.apps.okd.{{ okdDomain }}
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+  when: stat_result.stat.exists == False
+
+- name: Create /etc/docker/certs.d/{{ okd.ip_address }}
+  file:
+    path: /etc/docker/certs.d/{{ okd.ip_address }}
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+  when: stat_result_ip.stat.exists == False
+
+- name: Create /etc/docker/certs.d/docker-registry.default.svc
+  file:
+    path: /etc/docker/certs.d/docker-registry.default.svc
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+  when: stat_result_def.stat.exists == False
+
+- name: Create /etc/docker/certs.d/docker-registry.default.svc.cluster.local:5000
+  file:
+    path: /etc/docker/certs.d/docker-registry.default.svc.cluster.local:5000
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+  when: stat_result_svc.stat.exists == False
+
+# ### Certificate Authority cert
+
+- name: get issuing ca certificate and move to docker trust store
+  shell: jq -r ".data.issuing_ca" /tmp/registry_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /etc/docker/certs.d/docker-registry-default.apps.okd.{{ okdDomain }}/ca.crt
+
+- name: copy ca.crt to ip
+  copy:
+    src: /etc/docker/certs.d/docker-registry-default.apps.okd.{{ okdDomain }}/ca.crt
+    dest: /etc/docker/certs.d/{{ okd.ip_address }}/ca.crt
+    remote_src: yes
+
+- name: copy ca.crt to internal hostname directory docker-registry.default.svc
+  copy:
+    src: /etc/docker/certs.d/docker-registry-default.apps.okd.{{ okdDomain }}/ca.crt
+    dest: /etc/docker/certs.d/docker-registry.default.svc/ca.crt
+    remote_src: yes
+
+- name: copy ca.crt to internal hostname directory docker-registry.default.svc.cluster.local:5000
+  copy:
+    src: /etc/docker/certs.d/docker-registry-default.apps.okd.{{ okdDomain }}/ca.crt
+    dest: /etc/docker/certs.d/docker-registry.default.svc.cluster.local:5000/ca.crt
+    remote_src: yes
+
+### Issued cert
+
+- name: copy /etc/secrets/registry/registrycert to docker trust store for the domain
+  copy:
+    src: /etc/secrets/registry/registrycert
+    dest: /etc/docker/certs.d/docker-registry-default.apps.okd.{{ okdDomain }}/client.cert
+    remote_src: yes
+
+- name: copy /etc/secrets/registry/registrycert to docker trust store for the IP
+  copy:
+    src: /etc/secrets/registry/registrycert
+    dest: /etc/docker/certs.d/{{ okd.ip_address }}/client.cert
+    remote_src: yes
+
+- name: copy /etc/secrets/registry/registrycert to docker trust store for the internal hostname docker-registry.default.svc
+  copy:
+    src: /etc/secrets/registry/registrycert
+    dest: /etc/docker/certs.d/docker-registry.default.svc/client.cert
+    remote_src: yes
+
+- name: copy /etc/secrets/registry/registrycert to docker trust store for the internal hostname docker-registry.default.svc.cluster.local:5000
+  copy:
+    src: /etc/secrets/registry/registrycert
+    dest: /etc/docker/certs.d/docker-registry.default.svc.cluster.local:5000/client.cert
+    remote_src: yes
+
+### Issued key
+
+- name: copy /etc/secrets/registry/registrykey to docker trust store for the domain
+  copy:
+    src: /etc/secrets/registry/registrykey
+    dest: /etc/docker/certs.d/docker-registry-default.apps.okd.{{ okdDomain }}/client.key
+    remote_src: yes
+
+- name: copy /etc/secrets/registry/registrykey to docker trust store for the IP
+  copy:
+    src: /etc/secrets/registry/registrykey
+    dest: /etc/docker/certs.d/{{ okd.ip_address }}/client.key
+    remote_src: yes
+
+- name: copy /etc/secrets/registry/registrykey to docker trust store for the internal hostname docker-registry.default.svc
+  copy:
+    src: /etc/secrets/registry/registrykey
+    dest: /etc/docker/certs.d/docker-registry.default.svc/client.key
+    remote_src: yes
+
+- name: copy /etc/secrets/registry/registrykey to docker trust store for the internal hostname docker-registry.default.svc.cluster.local:5000
+  copy:
+    src: /etc/secrets/registry/registrykey
+    dest: /etc/docker/certs.d/docker-registry.default.svc.cluster.local:5000/client.key
+    remote_src: yes
+
+### Trust certificates and keys at box level
+
+- name: trust the registry certificate at the box level
+  copy:
+    src: /etc/secrets/registry/registrycert
+    dest: /etc/pki/ca-trust/source/anchors/docker-registry-default.apps.okd.{{ okdDomain }}.cert
+    remote_src: yes
+
+- name: trust the registry key at the box level
+  copy:
+    src: /etc/secrets/registry/registrykey
+    dest: /etc/pki/ca-trust/source/anchors/docker-registry-default.apps.okd.{{ okdDomain }}.key
+    remote_src: yes
+
+- name: trust the issuing CA at the box level
+  copy:
+    src: /etc/docker/certs.d/docker-registry-default.apps.okd.{{ okdDomain }}/ca.crt
+    dest: /etc/pki/ca-trust/source/anchors/docker-registry-default.apps.okd.{{ okdDomain }}.crt
+    remote_src: yes
+
+- name: refresh server certificate truststore
+  command: update-ca-trust enable
+
+#### Synchronise 
+
+- name: pull registry certificates down to WorkSpace
+  synchronize: 
+    src: /etc/docker/certs.d/
+    dest: /home/{{ workspaceUser }}/certs.d
+    dirs: yes 
+    mode: pull

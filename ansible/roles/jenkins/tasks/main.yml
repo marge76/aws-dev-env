@@ -1,0 +1,174 @@
+- name: Move JDK installation file over to EC2
+  copy:
+    src: "jdk-8u211-linux-x64.rpm"
+    dest: /tmp
+
+- name: install jdk
+  yum:
+    name: /tmp/jdk-8u211-linux-x64.rpm
+    state: present
+####################################
+
+########## Install and run Jenkins ##############
+
+- name: download jenkins.repo
+  get_url:
+    url: http://pkg.jenkins-ci.org/redhat-stable/jenkins.repo
+    dest: /etc/yum.repos.d/jenkins.repo
+
+- name: import jenkins key
+  rpm_key:
+    state: present
+    key: https://jenkins-ci.org/redhat/jenkins-ci.org.key
+
+- name: install jenkins
+  yum:
+    name: jenkins
+    state: present
+
+- name: Change Jenkins JAVA options
+  lineinfile: dest=/etc/sysconfig/jenkins
+    regexp=^JENKINS_JAVA_OPTIONS=
+    line=JENKINS_JAVA_OPTIONS="{{ jenkins.JAVA_OPTIONS }}"
+
+- name: Add HTTP proxy variables
+  lineinfile:
+    path: /home/centos/.bashrc
+    line: "{{ item.line }}"
+  with_items:
+    - { line: 'export HTTP_PROXY="http://{{ jenkins.proxy }}:{{ jenkins.proxy_http_port }}"' }
+    - { line: 'export HTTPS_PROXY="https://{{ jenkins.proxy }}:{{ jenkins.proxy_https_port }}"' }
+
+
+- name: start and enable jenkins on boot
+  systemd:
+    name: jenkins
+    state: started
+    enabled: yes
+
+########################
+
+########## Fetch Vault certificate, process it and import JKS file to keystore ##############
+
+- name: Clear private key file if already exists
+  file:
+    state: absent
+    path: "/tmp/priv_key.key"
+
+- name: If the keystore exists, destroy it.
+  file:
+    state: absent
+    path: "/var/lib/jenkins/secrets/host.jks"
+
+- name: fetch Certificate from vault
+  shell: curl --header "X-Vault-Token:{{ lookup('file', '/home/{{ workspaceUser }}/SecureFiles/{{ vault.host }}/tmp/key6.json') }}" --request POST --data '{"common_name":"{{ jenkins.host }}","ip_sans":"{{ jenkins.ip }}", "ttl":"{{ vault.cert_ttl}}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{vault.role_name}} >> certificate_raw.json -k
+  args:
+    chdir: /tmp
+
+- name: extract certificate information from json
+  shell: jq -r ".data.certificate" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/certificate.crt
+
+- name: extract private key information from json
+  shell: jq -r ".data.private_key" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/priv_key.key
+
+- name: Combine the jenkins.crt and jenkins.key files in to a .p12 file
+  expect:
+    echo: yes
+    command: openssl pkcs12 -export -in /tmp/certificate.crt -inkey /tmp/priv_key.key -name {{ jenkins.host }} -out /tmp/jenkins.p12
+    responses:
+      (?i)password: "{{ sudo_pass }}"
+
+- name: Import a pkcs12 keystore with a specified alias, create it if it doesn't exist
+  java_cert:
+    pkcs12_path: "/tmp/jenkins.p12"
+    pkcs12_password: "{{ sudo_pass }}"
+    pkcs12_alias: "{{ jenkins.host }}"
+    cert_alias: "{{ jenkins.host }}"
+    keystore_path: /var/lib/jenkins/host.jks
+    keystore_pass: "{{ sudo_pass }}"
+    keystore_create: yes
+    state: present
+
+- name: Replace jenkins config file from template
+  template:
+    src: jenkins_config.j2
+    dest: "{{ jenkins.config_file_location }}"
+
+- name: Make init.groovy.d Directory
+  file:
+    path: /var/lib/jenkins/init.groovy.d
+    state: directory
+
+- name: Create Jenkins security realm configuration script
+  become: yes
+  template:
+    src: basic_security.groovy.j2
+    dest: /var/lib/jenkins/init.groovy.d/basic_security.groovy
+  register: security_realm
+
+- name: restart jenkins
+  systemd:
+    name: jenkins
+    state: restarted
+
+- name: Wait for Jenkins to start up
+  uri:
+    url: https://{{ ansible_facts.eth0.ipv4.address }}:8443
+    status_code: 200
+    timeout: 5
+    validate_certs: no
+  register:
+    jenkins_service_status
+    # Keep trying for 5 mins in 5 sec intervals
+  retries: 60
+  delay: 5
+  until: >
+    'status' in jenkins_service_status and
+    jenkins_service_status['status'] == 200
+
+- name: Install plugins
+  jenkins_plugin:
+    name: "{{ item }}"
+    url: "https://{{ ansible_facts.eth0.ipv4.address }}:8443"
+    validate_certs: false
+    url_username: "admin"
+    url_password: "{{ jenkinsAdminPass }}"
+    force_basic_auth: yes
+  loop:
+    - audit-trail
+    - build-pipeline-plugin
+    - hashicorp-vault-pipeline
+    - jacoco
+    - jobConfigHistory
+    - nodejs
+    - openshift-client
+    - openshift-pipeline
+    - openshift-sync
+    - dependency-check-jenkins-plugin
+    - dependency-track
+    - workflow-multibranch
+    - pipeline-multibranch-defaults
+    - role-strategy
+    - sbt
+    - sonar
+    - stashNotifier
+
+- name: restart jenkins
+  systemd:
+    name: jenkins
+    state: restarted
+
+- name: Wait for Jenkins to start up
+  uri:
+    url: https://{{ ansible_facts.eth0.ipv4.address }}:8443
+    status_code: 200
+    timeout: 5
+    validate_certs: no
+  register:
+    jenkins_service_status
+    # Keep trying for 5 mins in 5 sec intervals
+  retries: 60
+  delay: 5
+  until: >
+    'status' in jenkins_service_status and
+    jenkins_service_status['status'] == 200

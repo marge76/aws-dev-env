@@ -1,0 +1,1 @@
+workSpaceIP: "{{ ansible_facts.eth0.ipv4.address }}"

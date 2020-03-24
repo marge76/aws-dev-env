@@ -1,0 +1,46 @@
+- include_vars: workspaceUsers.yml
+
+- name: Check status of folder
+  stat:
+    path: "/tmp/SecureFiles/p12files/"
+  register: folderExists
+
+- name: Make Directory
+  file:
+    path: "/tmp/SecureFiles/p12files/"
+    state: directory
+  when: not folderExists.stat.exists
+
+- name: Fetch Certificate from Vault
+  shell: |
+    curl --header "X-Vault-Token:{{ vault_key6_token }}" --request POST --data '{"common_name":"{{ item }}.{{ domain }}","ip_sans":"172.26.1.43", "ttl":"{{ vault.cert_ttl }}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{ vault.role_name }} >> /tmp/SecureFiles/{{ item }}.json -k
+    jq -r ".data.certificate" /tmp/SecureFiles/{{ item }}.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/SecureFiles/{{ item }}crt.crt
+    jq -r ".data.private_key" /tmp/SecureFiles/{{ item }}.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/SecureFiles/{{ item }}pri.key
+  args:
+    chdir: /tmp
+  loop: "{{ users }}"
+
+- name: install pexpect
+  pip:
+    name: pexpect
+  become: yes
+
+- name: Combine the crt and key files in to a .p12 file
+  become: no
+  expect:
+    command: openssl pkcs12 -export -in /tmp/SecureFiles/{{ item }}crt.crt -inkey /tmp/SecureFiles/{{ item }}pri.key -name workspace -out /tmp/SecureFiles/p12files/{{ item }}.p12
+    responses:
+      (?i)password: "{{ sudo_pass }}"
+  loop: "{{ users }}"
+
+- name: Move Secure Files to S3 bucket
+  become: yes
+  aws_s3:
+    bucket: "{{ bucketName }}"
+    src: /tmp/SecureFiles/p12files/{{ item }}.p12
+    object: /{{ item }}/{{ item }}.p12
+    mode: put
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    aws_region: "{{ aws_region }}"
+  loop: "{{ users }}"

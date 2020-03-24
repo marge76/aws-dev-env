@@ -1,0 +1,89 @@
+- name: install pip via easy_install
+  easy_install:
+    name: pip
+    state: latest
+
+- name: remove existing pexpect v2.3
+  yum:
+    name: pexpect
+    state: absent
+
+- name: install latest pexpect via pip
+  pip:
+    name: pexpect
+    state: latest
+
+- name: install package
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-7-x86_64/pgdg-centos96-9.6-3.noarch.rpm
+    state: latest
+
+- name: install postgresql and wget
+  yum:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+      - postgresql96
+      - postgresql96-server
+      - wget
+      - postgresql-devel 
+      - python-devel
+      - gcc
+
+- name: run setup
+  shell: /usr/pgsql-9.6/bin/postgresql96-setup initdb
+
+- name: set pg_config to path 
+  shell: export PATH=$PATH:/usr/pgsql-9.6/bin/
+
+- name: install psycopg2 module
+  pip:
+    name: psycopg2
+    state: latest
+
+- name: start and enable Postgres on boot
+  systemd:
+    name: postgresql-9.6
+    state: started
+    enabled: yes
+
+- name: set password
+  expect:
+    command: passwd postgres
+    responses:
+      (?i)password: "{{ postgresPassword }}"
+
+- name: Replace all peer to trust
+  replace:
+    path: /var/lib/pgsql/9.6/data/pg_hba.conf
+    regexp: "peer"
+    replace: "trust"
+
+- name: Replace all ident to trust
+  replace:
+    path: /var/lib/pgsql/9.6/data/pg_hba.conf
+    regexp: "ident"
+    replace: "trust"
+
+- name: Make DB
+  become_user: postgres
+  postgresql_db:
+    name: "{{ psql.dbName }}"
+    encoding: UNICODE
+    lc_collate: C
+    lc_ctype: C
+    template: template0
+
+- name: Make db User
+  become_user: postgres
+  postgresql_user:
+    db: "{{ psql.dbName }}"
+    name: "{{ psql.dbUser }}"
+    password: "{{ postgresPassword }}"
+    priv: ALL
+
+- name: Restart Postgres service
+  systemd:
+    name: postgresql-9.6
+    state: restarted    

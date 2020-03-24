@@ -1,0 +1,86 @@
+# confluence installation
+- name: download confluence
+  get_url:
+    url: "{{ confluence.URL }}"
+    dest: /tmp/
+- name: change the permissions of the binary so it can be executed.
+  file:
+    path: /tmp/{{ confluence.FileName }}
+    mode: 0777
+- name: execute confluence binary
+  shell: yes '' | ./{{ confluence.FileName }}
+  args:
+    chdir: /tmp/
+# request certificate, process and import in to keystore
+########## Fetch Vault certificate, process it and import JKS file to keystore ##############
+# Tidy up
+- name: Clear temp certificate file if already exists
+  file:
+    state: absent
+    path: "/tmp/certificate_raw.json"
+
+- name: Clear private key file if already exists
+  file:
+    state: absent
+    path: "/tmp/priv_key.key"
+
+- name: If the keystore exists, destroy it.
+  file:
+    state: absent
+    path: "{{ confluence.keystoreFile }}"
+
+# Fetch certificate and process
+- name: fetch Certificate from vault
+  shell: curl --header "X-Vault-Token:{{ lookup('file', '/home/{{ workspaceUser }}/SecureFiles/{{ vault.host }}/tmp/key6.json') }}" --request POST --data '{"common_name":"{{ confluence.host }}","ip_sans":"{{ confluence.ip }}", "ttl":"{{ vault.cert_ttl}}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ int_ca }}/issue/{{ vault.role_name }} >> certificate_raw.json -k
+  args:
+    chdir: /tmp
+
+- name: extract certificate information from json
+  shell: jq -r ".data.certificate" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/certificate.crt
+
+- name: extract private key information from json
+  shell: jq -r ".data.private_key" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/priv_key.key
+
+- name: Combine the confluence.crt and confluence.key files in to a .p12 file
+  expect:
+    echo: yes
+    shell: openssl pkcs12 -export -in /tmp/certificate.crt -inkey /tmp/priv_key.key -name {{ confluence.host }} -out /tmp/confluence.p12
+    responses:
+      (?i)password: "{{ sudo_pass }}"
+
+- name: Import the combined certificate and key file in to the keystore
+  expect:
+    echo: yes
+    shell: /opt/atlassian/confluence/jre/bin/keytool -importkeystore -srckeystore /tmp/confluence.p12 -destkeystore "{{ confluence.keystoreFile }}" -srcstoretype pkcs12
+    responses:
+      (?i)password: "{{ sudo_pass }}"
+      (?i)overwrite: "yes"
+
+# Transfer Intermediate certificate and import to keystore
+- name: Transfer the intermediate certificate via scp
+  copy:
+    src: /home/{{ workspaceUser }}/SecureFiles/{{ vault.host }}/tmp/intermediate_cert.crt
+    dest: /tmp/intermediate_cert.crt
+
+- name: Import the intermediate certificate in to the keystore
+  expect:
+    echo: yes
+    shell: /opt/atlassian/confluence/jre/bin/keytool -import -alias cedc_int -file /tmp/intermediate_cert.crt -keystore /opt/atlassian/confluence/jre/lib/security/cacerts
+    responses:
+      (?i)password: "changeit"
+      (?i)Trust this certificate: "yes"
+
+# Configure server files and reboot
+
+- name: Replace confluence config file from template
+  template:
+    src: confServer.j2
+    dest: "{{ confluence.config_file_location }}"
+
+- name: Replace confluence web.xml file from template
+  template:
+    src: confWeb.j2
+    dest: "{{ confluence.web_xml_file_location }}"
+
+- name: restart confluence
+  shell: /etc/init.d/confluence restart

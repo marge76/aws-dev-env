@@ -1,0 +1,26 @@
+# variables 
+confluence:
+  host: confluence.{{domain}}
+  ip: '{{ ansible_facts.eth0.ipv4.address }}'
+  port: 8090
+  URL: https://www.atlassian.com/software/confluence/downloads/binary/atlassian-confluence-6.12.4-x64.bin
+  FileName: atlassian-confluence-6.12.4-x64.bin
+  config_file_location: /opt/atlassian/confluence/conf/server.xml
+  web_xml_file_location: /opt/atlassian/confluence/confluence/WEB-INF/web.xml
+  HTTPConnectorPort: 8080
+  HTTPSecureServerPort: 8443
+  keystoreFile: /opt/atlassian/confluence/host.jks
+  sslEnabledProtocols: TLSv1.2
+  sslProtocol: TLSv1.2
+  ciphers: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+                       TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384,
+                       TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+                       TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256,
+                       TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,
+                       TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+                       TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384,TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384,
+                       TLS_ECDH_RSA_WITH_AES_256_CBC_SHA,TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA,
+                       TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+                       TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+                       TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256,
+                       TLS_ECDH_RSA_WITH_AES_128_CBC_SHA,TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA

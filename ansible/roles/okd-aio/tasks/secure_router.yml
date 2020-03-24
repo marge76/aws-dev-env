@@ -1,0 +1,75 @@
+## Housekeeping
+
+
+- name: set env vars
+  command: oc set env dc/router DEFAULT_CERTIFICATE_DIR=/etc/pki/tls/private
+
+- name: clear raw cert file
+  file:
+    path: /tmp/router_certificate_raw.json
+    state: absent
+
+- name: clear router cert file
+  file:
+    path: /tmp/router_certificate.crt
+    state: absent
+
+- name: clear router issuing ca cert file
+  file:
+    path: /tmp/router_certificate_issuing_ca.crt
+    state: absent
+
+- name: clear router root cert file
+  file:
+    path: /tmp/router_certificate_ca_chain.crt
+    state: absent
+
+- name: clear router key file
+  file:
+    path: /etc/pki/tls/private/tls.key
+    state: absent
+
+- name: clear combined certificate file
+  file:
+    path: /etc/pki/tls/private/tls.crt
+    state: absent
+
+- name: grab the IP of the router
+  shell: "oc get service router --template={% raw %}'{{.spec.clusterIP}}'{% endraw %}"
+  register: router_ip
+
+- name: echo registry ip
+  debug:
+    msg: "{{router_ip.stdout}}"
+
+### Fetch
+
+- name: fetch router Certificate from vault
+  shell: curl -k --header "X-Vault-Token:{{ vaultRootToken }}" --request POST --data '{"common_name":"router.okd.{{ okdDomain }}","ip_sans":"{{ router_ip.stdout }}","ttl":"{{ okd.cert_ttl}}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{vault.okd_role_name}} >> router_certificate_raw.json
+  args:
+    chdir: /tmp
+
+### Process
+
+- name: extract router certificate information from json
+  shell: jq -r ".data.certificate" /tmp/router_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' >> /tmp/router_certificate.crt
+
+- name: extract router certificate information from json
+  shell: jq -r ".data.issuing_ca" /tmp/router_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/router_certificate_issuing_ca.crt
+
+- name: extract router certificate information from json
+  shell: jq -r ".data.ca_chain | .[0]" /tmp/router_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/router_certificate_ca_chain.crt
+
+- name: extract router certificate information from json
+  shell: jq -r ".data.private_key" /tmp/router_certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' >>  /etc/pki/tls/private/tls.key
+
+#### Create secret and redeploy
+
+- name: combine router certificate and key
+  shell: cat /tmp/router_certificate.crt /tmp/router_certificate_issuing_ca.crt /tmp/router_certificate_ca_chain.crt /etc/pki/tls/private/tls.key >> /etc/pki/tls/private/tls.crt
+
+- name: overwrite the default router secret
+  shell: oc create secret generic router-certs --from-file=tls.crt=/etc/pki/tls/private/tls.crt --from-file=tls.key=/etc/pki/tls/private/tls.key --type=kubernetes.io/tls -o json --dry-run | oc replace -f -
+
+- name: redeploy the router
+  shell: oc rollout latest dc/router

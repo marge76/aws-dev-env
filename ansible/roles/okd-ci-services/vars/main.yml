@@ -1,0 +1,7 @@
+sonarqube:
+  root_proj_name: ci
+  sonarServiceName: sonarpostgres
+  postgresUser: sonarAnsible
+  postgresDBName: sonaransible
+  postgresAppName: sonarqubedb
+  sonaqubeAppName: sonarqube

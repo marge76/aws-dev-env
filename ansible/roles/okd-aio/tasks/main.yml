@@ -1,0 +1,9 @@
+- import_tasks: install_okd.yml
+- import_tasks: fetch_and_process_certs.yml
+- import_tasks: deploy_registry.yml
+- import_tasks: secure_registry.yml
+- import_tasks: deploy_router.yml
+- import_tasks: secure_router.yml  
+# - import_tasks: secure_console.yml # results in error displayed in pod: MESSAGE: cockpit-protocol: couldn't read from connection: Error performing TLS handshake: No supported cipher suites have been found.
+- import_tasks: restart.yml
+- import_tasks: registry_console.yml

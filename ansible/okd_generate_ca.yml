@@ -1,0 +1,7 @@
+- name: generate OpenShift CA
+  hosts: vault-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: vault-okd-ca

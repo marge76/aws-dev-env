@@ -1,0 +1,135 @@
+#### Assign user policies
+
+- name: create admin user in HTPASSWD
+  htpasswd:
+    path: /etc/origin/master/htpasswd
+    name: "{{ okd.admin_user }}"
+    password: "{{ okdAdminPassword }}"
+
+- name: create registry user in HTPASSWD
+  htpasswd:
+    path: /etc/origin/master/htpasswd
+    name: "{{ okd.pipeline_user }}"
+    password: "{{ okdServicePassword }}"
+
+- name: add admin policy to admin user
+  shell: oc adm policy add-cluster-role-to-user cluster-admin {{ okd.admin_user }}
+
+- name: add admin policy to pipeline user
+  shell: oc adm policy add-cluster-role-to-user cluster-admin {{ okd.pipeline_user }}
+
+- name: add view registry role to {{ okd.pipeline_user }}
+  command: oc policy add-role-to-user registry-viewer {{ okd.pipeline_user }}
+
+- name: add edit registry role to {{ okd.pipeline_user }}
+  command: oc policy add-role-to-user registry-editor {{ okd.pipeline_user }}
+
+##### Prepare for sync
+
+#### Trust at box level
+
+- name: copy registry ca to machine trust store
+  copy:
+    src: /etc/origin/master/ca.crt
+    dest: /etc/pki/ca-trust/source/anchors/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}.crt
+    remote_src: yes
+
+- name: update box ca trust store
+  command: update-ca-trust enable
+
+  ##### Trust at docker level
+- name: create directory for registry certificates in docker trust store
+  file:
+    path: /etc/docker/certs.d/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}
+    state: directory
+    mode: 0755
+    owner: root
+
+- name: copy registry ca to docker trust store
+  copy:
+    src: /etc/origin/master/ca.crt
+    dest: /etc/docker/certs.d/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}/ca.crt
+    remote_src: yes
+
+- name: extract registry certificate from /etc/origin/master/registry.crt
+  shell: openssl x509 -in /etc/origin/master/registry.crt -out /tmp/client.cert
+
+- name: copy registry certificate to docker trust store
+  copy:
+    src: /tmp/client.cert
+    dest: /etc/docker/certs.d/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}/client.cert
+    remote_src: yes
+
+- name: copy registry key to docker trust store
+  copy:
+    src: /etc/origin/master/registry.key
+    dest: /etc/docker/certs.d/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}/client.key
+    remote_src: yes
+
+- name: restart daemon
+  shell: systemctl daemon-reload
+
+- name: restart docker on host to update docker trust store
+  shell: systemctl restart docker
+
+- name: waiting for docker to come up
+  pause:
+    seconds: 10
+
+##### copy secrets to a directory and fetch the directory
+
+- name: create /tmp/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }} directory on remote
+  file:
+    path: /tmp/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}/
+    state: directory
+    mode: 0755
+
+- name: copy registry ca certificate to /tmp/
+  copy:
+    src: /etc/origin/master/ca.crt
+    dest: /tmp/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}/ca.crt
+    remote_src: yes
+
+- name: copy registry certificate to /tmp/
+  copy:
+    src: /tmp/client.cert
+    dest: /tmp/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}/client.cert
+    remote_src: yes
+
+- name: copy registry key to /tmp/
+  copy:
+    src: /etc/origin/master/registry.key
+    dest: /tmp/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}/client.key
+    remote_src: yes
+
+- name: pull registry certificates down to WorkSpace
+  synchronize:
+    src: /tmp/docker-registry-default.apps.{{ okd.master_name }}.{{ okdDomain }}
+    dest: /tmp/okd
+    mode: pull
+    recursive: yes
+
+##### Default router does not route traffic correctly and causes difficult to diagnose issues.
+
+- name: waiting for api to come up
+  pause:
+    seconds: 60
+
+- name: destroy default router deployment configuration
+  shell: oc delete dc/router
+  ignore_errors: yes
+
+- name: destroy default router service
+  shell: oc delete svc/router
+  ignore_errors: yes
+
+
+- name: destroy default router service account
+  shell: oc delete serviceaccount router
+  ignore_errors: yes
+
+
+- name: deploy a new router
+  shell: oc adm router router --replicas=1 --selector='node-role.kubernetes.io/infra=true' --service-account=router
+  ignore_errors: yes
+

@@ -1,0 +1,5 @@
+nexus:
+  host: nexus.{{ domain  }}
+  ip: '{{ ansible_facts.eth0.ipv4.address }}'
+  https_port: 8443
+  version: nexus-3.14.0-04

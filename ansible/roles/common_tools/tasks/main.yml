@@ -1,0 +1,43 @@
+# ---
+# - name: update yum
+#   yum:
+#     name: "*"
+#     state: latest
+
+- name: remove existing pexpect v2.3
+  yum:
+    name: pexpect
+    state: absent
+
+- name: install pip via easy_install
+  easy_install:
+    name: pip
+    state: latest
+
+- name: install latest pexpect via pip
+  pip:
+    name: pexpect
+    state: latest
+
+- name: install rsync
+  yum:
+    name: rsync
+    state: latest
+
+############### Setup JQ ###############
+
+- name: download jq
+  get_url:
+    url: https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64
+    dest: /tmp/
+
+- name: change the permissions of the binary so it can be executed.
+  file:
+    path: /tmp/jq-linux64
+    mode: 0777
+
+- name: rename jq install file
+  shell: mv /tmp/jq-linux64 /tmp/jq
+
+- name: execute conf binary
+  shell: cp /tmp/jq /usr/bin

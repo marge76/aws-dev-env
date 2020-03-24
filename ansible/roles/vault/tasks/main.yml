@@ -1,0 +1,446 @@
+- name: Install unzip
+  yum:
+    name: unzip
+    state: latest
+
+##### POSTGRES SPECIFIC ########
+
+- name: Make user SUPERUSER
+  become_user: postgres
+  command: psql {{ psql.dbName }} -c 'ALTER ROLE {{ psql.dbUser }} SUPERUSER;'
+
+- name: restart Postgresql
+  service:
+    name: postgresql-9.6
+    state: restarted
+
+- name: Move into DB
+  become_user: postgres
+  command: psql  {{ psql.dbName }} -c '\c postgres'
+
+- name: Become postgres user and make key store
+  become_user: postgres
+  command: psql {{ psql.dbName }} -c 'CREATE TABLE vault_kv_store ( parent_path TEXT COLLATE "C" NOT NULL, path        TEXT COLLATE"C",   key         TEXT COLLATE "C",  value       BYTEA, CONSTRAINT pkey PRIMARY KEY (path, key) );'
+  ignore_errors: yes
+
+- name: Make Index
+  become_user: postgres
+  command: psql {{ psql.dbName }} -c 'CREATE INDEX parent_path_idx ON vault_kv_store (parent_path);'
+  ignore_errors: yes
+
+##### POSTGRES SPECIFIC ########
+
+- name: Download Vault
+  unarchive:
+    src: https://releases.hashicorp.com/vault/0.11.4/vault_0.11.4_linux_amd64.zip
+    dest: /usr/bin
+    remote_src: yes
+
+- name: Enable mlock
+  shell: setcap cap_ipc_lock=+ep $(readlink -f $(which vault))
+
+- name: Make Vault Directory
+  file:
+    path: /etc/vault
+    state: directory
+
+- name: Make Vault-data Directory
+  file:
+    path: /vault-data
+    state: directory
+
+- name: Make Vault log Directory
+  file:
+    path: /logs/vault
+    state: directory
+
+- name: make config file
+  template:
+    src: config.j2
+    dest: /etc/vault/config.json
+
+- name: Make vaultService file
+  template:
+    src: vaultService.j2
+    dest: /etc/systemd/system/vault.service
+
+- name: start and enable vault on boot
+  systemd:
+    name: vault
+    state: started
+    enabled: yes
+
+- name: Check status of file
+  stat: path=/tmp/keyFile.json
+  register: p
+
+- name: Initialize the vault
+  command: vault operator init
+  register: keys
+  environment:
+    VAULT_ADDR: "{{  ec2http }}"
+  when: not p.stat.exists
+
+- name: copy json to file
+  copy:
+    content: "{{ keys | to_nice_json }}"
+    dest: /tmp/keyFile.json
+  when: not p.stat.exists
+
+- name: Get key 1
+  command: jq -r '.stdout_lines[0]|split(" ")[-1]' /tmp/keyFile.json
+  register: key1
+
+- name: Get key 2
+  command: jq -r '.stdout_lines[1]|split(" ")[-1]' /tmp/keyFile.json
+  register: key2
+
+- name: Get key 3
+  command: jq -r '.stdout_lines[2]|split(" ")[-1]' /tmp/keyFile.json
+  register: key3
+
+- name: Get key 4
+  command: jq -r '.stdout_lines[3]|split(" ")[-1]' /tmp/keyFile.json
+  register: key4
+
+- name: Get key 5
+  command: jq -r '.stdout_lines[4]|split(" ")[-1]' /tmp/keyFile.json
+  register: key5
+
+- name: Get Root Key
+  command: jq -r '.stdout_lines[6]|split(" ")[-1]' /tmp/keyFile.json
+  register: rootKey
+
+- name: copy root key to json to file
+  copy:
+    content: "{{ rootKey.stdout }}"
+    dest: /tmp/key6.json
+
+- name: Unseal vault
+  shell: |
+    vault operator unseal {{ key4.stdout }}
+    vault operator unseal {{ key5.stdout }}
+    vault operator unseal {{ key3.stdout }}
+  environment:
+    VAULT_ADDR: "{{ ec2http }}"
+
+- name: Login to Vault
+  command: vault login "{{ rootKey.stdout }}"
+  environment:
+    VAULT_ADDR: "{{ ec2http }}"
+
+# -----------------------------------------------------------------------
+- name: Enable pki backend
+  command: vault secrets enable pki
+  environment:
+    VAULT_ADDR: "{{  ec2http }}"
+  ignore_errors: yes
+
+#
+- name: set max ttl
+  command: vault secrets tune -max-lease-ttl=87600h pki
+  environment:
+    VAULT_ADDR: "{{ ec2http }}"
+
+- name: Check status of file
+  stat: path=/tmp/CA_cert.crt
+  register: x
+
+- name: Generate root ca
+  command: >
+    vault write -field=certificate pki/root/generate/internal
+      common_name="{{ root_ca_common_name }}"
+      ttl="87600h"
+      format="pem"
+      key_type="ec"
+      key_bits=256
+      organization="{{vault.project_name}}"
+      country="GB"
+  register: rootCA
+  environment:
+    VAULT_ADDR: "{{  ec2http }}"
+  when: not x.stat.exists
+
+- name: Save Root CA to file
+  copy:
+    content: "{{ rootCA.stdout }}"
+    dest: /tmp/CA_cert.crt
+  when: not x.stat.exists
+
+- name: Configure the CA and CRL URLs
+  command: >
+    vault write pki/config/urls \
+    issuing_certificates="http://127.0.0.1:8200/v1/pki/ca" \
+    crl_distribution_points="http://127.0.0.1:8200/v1/pki/crl"
+  environment:
+    VAULT_ADDR: "{{  ec2http }}"
+
+- name: Enable pki engine for intermediate
+  command: vault secrets enable -path={{ vault.int_ca}} pki
+  environment:
+    VAULT_ADDR: "{{  ec2http }}"
+  ignore_errors: yes
+
+- name: set max ttl
+  command: vault secrets tune -max-lease-ttl=87600h {{ vault.int_ca}}
+  environment:
+    VAULT_ADDR: "{{  ec2http }}"
+  ignore_errors: yes
+
+- name: Generate signing request for int_ca
+  command: >
+    vault write -field=csr {{ vault.int_ca }}/intermediate/generate/internal
+      common_name="{{ devtools_int_ca_common_name }}"
+      ttl="87600h"
+      format="pem"
+      key_type="ec"
+      key_bits=256
+      organization="{{ vault.project_name }}"
+      country="GB"
+  register: SigningRequest
+  environment:
+    VAULT_ADDR: "{{ ec2http }}"
+  ignore_errors: yes
+
+- name: Save Signing request int_ca to file
+  copy:
+    content: "{{ SigningRequest.stdout }}"
+    dest: /tmp/pki_intermediate.pem
+  ignore_errors: yes
+
+- name: Sign the request with root ca
+  command: >
+    vault write -field=certificate pki/root/sign-intermediate
+      csr=@/tmp/pki_intermediate.pem
+      format=pem_bundle
+  register: tempSignRequest
+  environment:
+    VAULT_ADDR: "{{  ec2http }}"
+  ignore_errors: yes
+
+- name: Save Signing request to file
+  copy:
+    content: "{{ tempSignRequest.stdout }}"
+    dest: /tmp/intermediate_cert.crt
+  ignore_errors: yes
+
+- name: Add signed int cert back into vault
+  command: >
+    vault write {{ vault.int_ca }}/intermediate/set-signed
+    certificate=@/tmp/intermediate_cert.crt
+  environment:
+    VAULT_ADDR: "{{  ec2http }}"
+  ignore_errors: yes
+
+- name: create role for creating dev tool certificates
+  command: |
+    vault write {{ vault.int_ca }}/roles/{{ vault.role_name }}
+        allowed_domains="{{ domain }}"
+        allow_subdomains=true
+        ttl="8760h"
+        max_ttl="8760h"
+        generate_lease=true
+        key_type="ec"
+        key_bits=256
+        server_flag=true
+        client_flag=true
+        ou="tools"
+        organization="{{ vault.project_name }}"
+        country="GB"
+  environment:
+    VAULT_ADDR: "{{ ec2http }}"
+  ignore_errors: yes
+
+- name: create role for creating user certificates
+  command: |
+    vault write {{ vault.int_ca }}/roles/{{ vault.team_role_name }}
+        allowed_domains="{{ domain }}"
+        allow_subdomains=true
+        ttl="8760h"
+        max_ttl="8760h"
+        generate_lease=true
+        key_type="ec"
+        key_bits=256
+        server_flag=false
+        client_flag=true
+        ou="users"
+        organization="{{ vault.project_name }}"
+        country="GB"
+  environment:
+    VAULT_ADDR: "{{ ec2http }}"
+  ignore_errors: yes
+
+- name: create role for creating okd  certificates
+  command: |
+    vault write {{ vault.int_ca }}/roles/{{ vault.okd_role_name }}
+        allowed_domains="okd.{{ okdDomain }},apps.okd.{{ okdDomain }},default.svc,default.svc.cluster.local"
+        allow_subdomains=true
+        allow_bare_domains=false
+        allow_glob_domains=false
+        allow_ip_sans=true
+        allow_localhost=true
+        require_cn=true
+        ttl="31536000"
+        key_usage=["DigitalSignature","KeyAgreement","KeyEncipherment"]
+        max_ttl="31536000"
+        generate_lease=true
+        code_signing_flag=false
+        allow_any_name=false
+        email_protection_flag=false
+        key_type="rsa"
+        no_store=false
+        key_bits=4096
+        server_flag=true
+        enforce_hostnames=true
+        basic_constraints_valid_for_non_ca=false
+        use_csr_common_name=true
+        use_csr_sans=true
+        not_before_duration=30s
+        client_flag=true
+        ou="test"
+        organization="{{ vault.project_name }}"
+        country="GB"
+  environment:
+    VAULT_ADDR: "{{  ec2http }}"
+  ignore_errors: yes
+
+- name: Enable pki engine for okd_intermediate
+  command: vault secrets enable -path={{ vault.okd_ca}} pki
+  environment:
+    VAULT_ADDR: "{{ ec2http }}"
+  ignore_errors: yes
+
+- name: set max ttl
+  command: vault secrets tune -max-lease-ttl=87600h {{ vault.okd_ca}}
+  environment:
+    VAULT_ADDR: "{{ ec2http }}"
+  ignore_errors: yes
+
+- name: Generate signing request for okd_ca
+  command: >
+    vault write -field=csr {{ vault.okd_ca }}/intermediate/generate/exported
+      common_name="{{ okd_ca_common_name }}"
+      ttl="87600h"
+      format="pem_bundle"
+      private_key_format="pem"
+      key_type="rsa"
+      key_bits=4096
+      organization="{{ vault.project_name }}"
+      country="GB"
+  register: SigningRequest
+  environment:
+    VAULT_ADDR: "{{ ec2http }}"
+  ignore_errors: yes
+
+- name: Save Signing request and private key to file
+  copy:
+    content: "{{ SigningRequest.stdout }}"
+    dest: /tmp/pki_okd_intermediate.pem
+  ignore_errors: yes
+
+- name: extract private key from file
+  shell: openssl pkey -in /tmp/pki_okd_intermediate.pem -out /tmp/okd_ca_key.key
+
+- name: extract csr from file
+  shell: openssl req -in /tmp/pki_okd_intermediate.pem -out /tmp/okd_ca_csr.csr
+
+- name: Sign the request with root ca
+  command: >
+    vault write -field=certificate pki/root/sign-intermediate
+      csr=@/tmp/okd_ca_csr.csr
+      format=pem_bundle
+  register: tempSignRequest
+  environment:
+    VAULT_ADDR: "{{ ec2http }}"
+  ignore_errors: yes
+
+- name: Save Signing request to file
+  copy:
+    content: "{{ tempSignRequest.stdout }}"
+    dest: /tmp/okd_ca_cert.crt
+  ignore_errors: yes
+
+- name: Add signed int cert back into vault
+  command: >
+    vault write {{ vault.okd_ca }}/intermediate/set-signed
+    certificate=@/tmp/okd_ca_cert.crt
+  environment:
+    VAULT_ADDR: "{{ ec2http }}"
+  ignore_errors: yes
+
+- name: Clear temp certificate file if already exists
+  file:
+    state: absent
+    path: "/tmp/certificate_raw.json"
+
+- name: Clear private key file if already exists
+  file:
+    state: absent
+    path: "/tmp/priv_key.key"
+
+- debug: var=rootKey.stdout
+
+- name: fetch Certificate from vault
+  shell: curl --header "X-Vault-Token:{{ rootKey.stdout }}" --request POST --data '{"common_name":"{{ vault.host }}","ip_sans":"{{ ec2ip }}", "ttl":"{{ vault.cert_ttl }}"}' http://{{ ec2ip }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{ vault.role_name }} >> certificate_raw.json
+  args:
+    chdir: /tmp
+
+- name: Stop Vault
+  service:
+    name: vault
+    state: stopped
+
+- name: extract certificate information from json
+  shell: jq -r ".data.certificate" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > {{ certPath }}certificate.crt
+
+- name: extract private key information from json
+  shell: jq -r ".data.private_key" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > {{ certPath }}priv_key.key
+
+- name: Replace config file
+  template:
+    src: configSecure.j2
+    dest: /etc/vault/config.json
+
+- name: Start Vault
+  service:
+    name: vault
+    state: started
+
+- name: import intermediate cert into keystore
+  shell: cp /tmp/intermediate_cert.crt /etc/pki/ca-trust/source/anchors/
+
+- name: import okd cert into keystore
+  shell: cp /tmp/okd_ca_cert.crt /etc/pki/ca-trust/source/anchors/
+
+- name: refresh keystore
+  shell: update-ca-trust extract
+
+- name: unseal vault 1
+  shell: |
+    vault operator unseal {{ key4.stdout }}
+    vault operator unseal {{ key5.stdout }}
+    vault operator unseal {{ key3.stdout }}
+  environment:
+    VAULT_ADDR: "{{ ec2https }}"
+
+- name: Move key file over to local machine
+  fetch:
+    src: /tmp/{{ item }}
+    dest: /home/{{ workspaceUser }}/SecureFiles
+  with_items: keyFile.json
+    - intermediate_cert.crt
+    - okd_ca_cert.crt
+    - okd_ca_key.key
+    - CA_cert.crt
+    - key6.json
+
+- name: Upload okd certificate for browsers to S3 bucket
+  become: yes
+  aws_s3:
+    mode: put
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    aws_region: "{{ aws_region }}"
+    bucket: "{{ okd.bucketName }}"
+    src: "/tmp/okd_ca_cert.crt"
+    object: /browser/okd_ca_cert.crt

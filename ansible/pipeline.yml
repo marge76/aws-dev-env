@@ -1,0 +1,42 @@
+- name: Install SSM and Cloudwatch Control and Augit agents
+  hosts:
+    - okd-server
+  gather_facts: true
+  become: true
+  serial: 1
+  tasks:
+    - import_role:
+        name: ssm-cloudwatch
+
+- name: Install common tools
+  hosts:
+    - okd-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: common_tools
+
+- name: Install OKD
+  hosts: okd-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: okd-aio
+
+- name: Distribute Docker Registry certificates to nodes
+  hosts: registry-access
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: okd-aio-sync
+
+- name: Deploy SonarCube as service within OKD
+  hosts: okd-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: okd-ci-services

@@ -1,0 +1,17 @@
+#!/bin/sh
+# chkconfig: - 90 25
+echo -n 'Squid service'
+case "$1" in
+start)
+/usr/sbin/squid
+;;
+stop)
+/usr/sbin/squid -k shutdown
+;;
+reload)
+/usr/sbin/squid -k reconfigure
+;;
+*)
+echo "Usage: `basename $0` {start|stop|reload}"
+;;
+esac

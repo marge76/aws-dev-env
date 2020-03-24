@@ -1,0 +1,16 @@
+- name: Install Workspace tools
+  hosts: workspaces
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: workspace
+
+- name: Get certificates for all workspace users
+  hosts: localworkspace
+  gather_facts: true
+  become: false
+  tasks:
+  - import_role:
+      name: workspace_crt_keys
+

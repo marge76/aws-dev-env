@@ -1,0 +1,10 @@
+- name: Securing the console
+  blockinfile:
+    path: /etc/origin/master/master-config.yaml
+    insertafter: "^.*requestTimeoutSeconds: 3600.*$"
+    block: |2
+        namedCertificates:
+          - certFile: consolecert.crt
+            keyFile: consolekey.key
+            names:
+              - "*.okd.{{ okdDomain }}"

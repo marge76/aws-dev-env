@@ -1,0 +1,3 @@
+*.retry
+roles/openshift-ansible
+openshift-ansible/

@@ -1,0 +1,93 @@
+########## Fetch Vault certificate, process it and import JKS file to keystore ##############
+# Tidy up
+- name: Clear private key file if already exists
+  file:
+    state: absent
+    path: "/tmp/priv_key.key"
+
+- name: If the keystore exists, destroy it.
+  file:
+    state: absent
+    path: "/opt/atlassian/bitbucket/{{ bitbucket.version }}/host.jks"
+
+# bitbucket installation
+- name: check if installation file already exists
+  stat: path=/tmp/{{ bitbucket.FileName }}
+  register: installation_file
+
+- name: download bitbucket
+  get_url:
+    url: "{{ bitbucket.URL }}"
+    dest: /tmp/
+  when: not installation_file.stat.exists
+
+- name: change the permissions of the binary so it can be executed.
+  file:
+    path: /tmp/{{ bitbucket.FileName }}
+    mode: 0777
+  when: not installation_file.stat.exists
+
+- name: execute bitbucket binary
+  shell: yes '' | ./{{ bitbucket.FileName }}
+  args:
+    chdir: /tmp/
+  when: not installation_file.stat.exists
+
+# Fetch certificate and process
+- name: fetch Certificate from vault
+  shell: curl --header "X-Vault-Token:{{ lookup('file', '/home/{{ workspaceUser }}/SecureFiles/{{ vault.host }}/tmp/key6.json') }}" --request POST --data '{"common_name":"{{bitbucket.host}}","ip_sans":"{{ bitbucket.ip }}", "ttl":"{{ vault.cert_ttl }}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{ vault.role_name }} >> certificate_raw.json -k
+  args:
+    chdir: /tmp
+
+- name: extract certificate information from json
+  shell: jq -r ".data.certificate" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/certificate.crt
+
+- name: extract private key information from json
+  shell: jq -r ".data.private_key" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/priv_key.key
+
+- name: Combine the bitbucket.crt and bitbucket.key files in to a .p12 file
+  expect:
+    echo: yes
+    shell: openssl pkcs12 -export -in /tmp/certificate.crt -inkey /tmp/priv_key.key -name {{ bitbucket.host }} -out /tmp/bitbucket.p12
+    responses:
+      (?i)password: "{{ bitBucketKeyStorePass }}"
+
+- name: Import the combined certificate and kexitey file in to the keystore
+  expect:
+    echo: yes
+    shell: /opt/atlassian/bitbucket/{{ bitbucket.version }}/jre/bin/keytool -importkeystore -srckeystore /tmp/bitbucket.p12 -destkeystore /opt/atlassian/bitbucket/{{ bitbucket.version }}/host.jks -srcstoretype pkcs12
+    responses:
+      (?i)password: "{{ bitBucketKeyStorePass }}"
+      (?i)overwrite: "yes"
+
+# Transfer Intermediate certificate and import to keystore
+- name: Transfer the intermediate certificate via scp
+  copy:
+    src: /home/{{ workspaceUser }}/SecureFiles/{{ vault.host }}/tmp/intermediate_cert.crt
+    dest: /tmp/intermediate_cert.crt
+
+- name: Import the intermediate certificate in to the keystore
+  expect:
+    echo: yes
+    shell: /opt/atlassian/bitbucket/{{ bitbucket.version }}/jre/bin/keytool -import -alias cedc_int -file /tmp/intermediate_cert.crt -keystore /opt/atlassian/bitbucket/{{ bitbucket.version }}/jre/lib/security/cacerts
+    responses:
+      (?i)password: "changeit"
+      (?i)Trust this certificate: "yes"
+
+# Configure server files and reboot
+
+- name: create bitbucket.properties if it doesn't exist
+  file:
+    state: touch
+    path: /var/atlassian/application-data/bitbucket/shared/bitbucket.properties
+
+- name: Replace bitbucket config file from template
+  template:
+    src: bbconf.j2
+    dest: /var/atlassian/application-data/bitbucket/shared/bitbucket.properties
+
+- name: stop bitbucket
+  shell: /etc/init.d/atlbitbucket stop
+
+- name: start bitbucket service
+  shell: /etc/init.d/atlbitbucket start

@@ -1,0 +1,151 @@
+########## Install Docker ##############
+
+- name: install Docker
+  yum:
+    name: docker
+    state: latest
+
+##############
+
+####### Install Oracle JDK 8 ############
+
+- name: Move JDK installation file over to EC2
+  copy:
+    src: "jdk-8u211-linux-x64.rpm"
+    dest: /tmp
+
+- name: install jdk
+  yum:
+    name: /tmp/jdk-8u211-linux-x64.rpm
+    state: present
+
+##############
+
+########## Install Node.js ##############
+
+- name: Install EPEL repo
+  shell: curl -sL https://rpm.nodesource.com/setup_10.x | bash -
+
+- name: install Node.js and NPM
+  yum:
+    name: nodejs
+    state: latest
+
+##############
+
+########## Install IntelliJ ##############
+
+- name: download IntelliJ Community edition
+  get_url:
+    url: https://download.jetbrains.com/idea/ideaIC-{{ IntelliJ.version }}.tar.gz
+    dest: /tmp/IntelliJ.tar.gz
+
+- name: extract /tmp/IntelliJ.tar.gz
+  unarchive:
+    src: /tmp/IntelliJ.tar.gz
+    dest: /opt/
+    remote_src: yes
+
+##############
+
+########## Install VS code ##############
+
+- name: set microsoft repo
+  yum_repository:
+    name: code
+    description: vscode
+    file: vscode
+    gpgkey: https://packages.microsoft.com/keys/microsoft.asc
+    baseurl: https://packages.microsoft.com/yumrepos/vscode
+
+- name: install vscode
+  yum:
+    name: code
+    state: present
+    update_cache: yes
+
+##############
+
+########### Stop clipboad access ###########
+
+- name: Restrict clipboad access
+  lineinfile:
+    path: /etc/pcoip-agent/pcoip-agent.conf
+    line: "pcoip.server_clipboard_state = 0"
+
+##############
+
+########### Get HTTPS Certificates ###########
+
+- name: create SecureFiles folder if it doesn't exist
+  file:
+    state: directory
+    path: /etc/SecureFiles/{{ vault.host }}/tmp/
+  become: yes
+
+- name: Get list of files from S3
+  aws_s3:
+    mode: list
+    aws_access_key: "{{ AWS_ACCESS_KEY }}"
+    aws_secret_key: "{{ AWS_SECRET_KEY }}"
+    bucket: "{{ bucketName }}"
+    prefix: "{{ vault.host }}/tmp/"
+    marker: "{{ vault.host }}/tmp/"
+  register: s3_bucket_items
+
+- name: Download files from S3
+  aws_s3:
+    mode: get
+    aws_access_key: "{{ AWS_ACCESS_KEY }}"
+    aws_secret_key: "{{ AWS_SECRET_KEY }}"
+    bucket: "{{ bucketName }}"
+    object: "{{ item }}"
+    dest: "/etc/SecureFiles/{{ vault.host }}/tmp/{{ item|basename }}"
+  with_items: "{{ s3_bucket_items.s3_keys }}"
+  become: yes
+
+- name: Move int ca to machine
+  copy:
+    src: "/etc/SecureFiles/{{ vault.host }}/tmp/intermediate_cert.crt"
+    dest: /etc/intermediate_cert.crt
+    remote_src: yes
+  become: yes
+
+- name: edit bash script
+  lineinfile:
+    path: $HOME/.bashrc
+    line: 'export VAULT_CACERT="/etc/intermediate_cert.crt"'
+
+- name: edit bash script 2
+  lineinfile:
+    path: $HOME/.bashrc
+    line: 'export VAULT_ADDR="https://{{ vault.host }}:8200"'
+
+#### Squid Proxy Certificate installation ####
+- name: Get Squid Root Certificate for tools from S3 bucket
+  become: yes
+  aws_s3:
+    mode: get
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    aws_region: "{{ aws_region }}"
+    bucket: "{{ bucketName }}"
+    dest: /tmp/root_cert_squid_workspace.der
+    object: /squid/root_cert_squid_workspace.der
+
+- name: Install ca certificate tool
+  yum:
+    name: ca-certificates
+    state: present
+
+- name: Transfer the root certificate to trust store
+  shell: cp /tmp/root_cert_squid_workspace.der /etc/pki/ca-trust/source/anchors/root_cert_squid_workspace.crt
+
+- name: Enable the dynamic CA configuration feature
+  shell: update-ca-trust force-enable
+
+- name: Update CA trust
+  shell: update-ca-trust extract
+
+- name: Import a root certificate to java keystore
+  shell: keytool -import -alias squid_workspace -file /tmp/root_cert_squid_workspace.der -keystore /usr/java/jdk1.8.0_211-amd64/jre/lib/security/cacerts -noprompt -keypass changeit -storepass changeit

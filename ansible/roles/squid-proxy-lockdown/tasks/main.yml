@@ -1,0 +1,7 @@
+- name: Replace squid config file so that all traffic is intercepted
+  template:
+    src: squid.conf.j2
+    dest: /etc/squid/squid.conf
+
+- name: Restart squid service
+  shell: systemctl restart squid

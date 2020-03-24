@@ -1,0 +1,6 @@
+ec2ip: "{{ ansible_facts.eth0.ipv4.address }}"
+ec2http: http://127.0.0.1:8200
+ec2https: https://{{ ec2ip }}:8200
+root_ca_common_name: "root_ca.{{ domain }}"
+devtools_int_ca_common_name: "devtool_int_ca.{{ domain }}"
+certPath: /etc/vault/

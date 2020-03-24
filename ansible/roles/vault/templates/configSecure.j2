@@ -1,0 +1,21 @@
+{
+	"listener": [{
+		"tcp": {
+			"address": "0.0.0.0:8200",
+			"tls_disable": 0,
+			"tls_cert_file": "/etc/vault/certificate.crt",
+			"tls_key_file": "/etc/vault/priv_key.key"
+			
+		}
+	}],
+	"api_addr": "http://127.0.0.1:8200",
+	"storage": {
+		"postgresql": {
+			"connection_url": "postgresql://{{ psql.dbUser }}:{{ postgresPassword }}@localhost:5432/{{ psql.dbName }}?sslmode=disable"
+		}
+	},
+	"max_lease_ttl": "8760h",
+	"default_lease_ttl": "8760h",
+	"disable_mlock": true,
+	"ui": true
+}

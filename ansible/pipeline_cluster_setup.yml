@@ -1,0 +1,16 @@
+- name: Install SSM and Cloudwatch Control and Augit agents
+  hosts: OSEv3
+  gather_facts: true
+  become: true
+  serial: 1
+  tasks:
+    - import_role:
+        name: ssm-cloudwatch
+
+- name: prepare OKD hosts
+  hosts: OSEv3
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: okd-cluster-setup

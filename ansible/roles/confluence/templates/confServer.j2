@@ -1,0 +1,90 @@
+<Server port="8000" shutdown="SHUTDOWN" debug="0">
+    <Service name="Tomcat-Standalone">
+        <!--
+         ==============================================================================================================
+         DEFAULT - Direct connector with no proxy, for unproxied HTTP access to Confluence.
+
+         If using a http/https proxy, comment out this connector.
+         ==============================================================================================================
+        -->
+        <Connector port="{{ confluence.port }}" connectionTimeout="20000" redirectPort="{{ confluence.HTTPSecureServerPort }}"
+                   maxThreads="48" minSpareThreads="10"
+                   enableLookups="false" acceptCount="10" debug="0" URIEncoding="UTF-8"
+                   protocol="org.apache.coyote.http11.Http11NioProtocol"/>
+        <!--
+         ==============================================================================================================
+         HTTP - Proxying Confluence via Apache or Nginx over HTTP
+
+         If you're proxying traffic to Confluence over HTTP, uncomment the connector below and comment out the others.
+         Make sure you provide the right information for proxyName and proxyPort.
+
+         For more information see:
+            Apache - https://confluence.atlassian.com/x/4xQLM
+            nginx  - https://confluence.atlassian.com/x/TgSvEg
+
+         ==============================================================================================================
+        -->
+
+        <!--
+        <Connector port="{{ confluence.port }}"" connectionTimeout="20000" redirectPort="{{ confluence.HTTPSecureServerPort }}"
+                   maxThreads="48" minSpareThreads="10"
+                   enableLookups="false" acceptCount="10" debug="0" URIEncoding="UTF-8"
+                   protocol="org.apache.coyote.http11.Http11NioProtocol"
+                   scheme="http" proxyName="<subdomain>.<domain>.com" proxyPort="80"/>
+        -->
+        
+        <!--
+         ==============================================================================================================
+         HTTPS - Direct connector with no proxy, for unproxied HTTPS access to Confluence.
+
+         For more info see https://confluence.atlassian.com/x/s3UC
+         ==============================================================================================================
+        -->
+
+   <Connector port="{{ confluence.HTTPSecureServerPort }}" maxHttpHeaderSize="8192"
+                   maxThreads="150" minSpareThreads="25"
+                   protocol="org.apache.coyote.http11.Http11Nio2Protocol"
+                   enableLookups="false" disableUploadTimeout="true"
+                   acceptCount="100" scheme="https" secure="true"
+                   clientAuth="false" sslProtocol="{{ confluence.sslProtocol }}" sslEnabledProtocols="{{ confluence.sslEnabledProtocols }}" SSLEnabled="true"
+                   URIEncoding="UTF-8" keystorePass="{{ sudo_pass }}" keystoreFile="{{ confluence.keystoreFile }}" keyAlias="{{ confluence.host }}"
+                   ciphers="{{ confluence.ciphers }}"/>
+        
+
+        <!--
+         ==============================================================================================================
+         HTTPS - Proxying Confluence via Apache or Nginx over HTTPS
+
+         If you're proxying traffic to Confluence over HTTPS, uncomment the connector below and comment out the others.
+         Make sure you provide the right information for proxyName and proxyPort.
+
+         For more information see:
+            Apache - https://confluence.atlassian.com/x/PTT3MQ
+            nginx  - https://confluence.atlassian.com/x/cNIvMw
+         ==============================================================================================================
+        -->
+
+        <!--
+        <Connector port="{{ confluence.port }}" connectionTimeout="20000" redirectPort="{{ confluence.HTTPSecureServerPort }}"
+                   maxThreads="48" minSpareThreads="10"
+                   enableLookups="false" acceptCount="10" debug="0" URIEncoding="UTF-8"
+                   protocol="org.apache.coyote.http11.Http11NioProtocol"
+                   scheme="https" secure="true" proxyName="<subdomain>.<domain>.com" proxyPort="{{ confluence.HTTPSecureServerPort }}"/>
+        -->
+
+        <Engine name="Standalone" defaultHost="localhost" debug="0">
+            <Host name="localhost" debug="0" appBase="webapps" unpackWARs="true" autoDeploy="false" startStopThreads="4">
+                <Context path="" docBase="../confluence" debug="0" reloadable="false" useHttpOnly="true">
+                    <!-- Logging configuration for Confluence is specified in confluence/WEB-INF/classes/log4j.properties -->
+                    <Manager pathname=""/>
+                    <Valve className="org.apache.catalina.valves.StuckThreadDetectionValve" threshold="60"/>
+                </Context>
+
+                <Context path="${confluence.context.path}/synchrony-proxy" docBase="../synchrony-proxy" debug="0"
+                         reloadable="false" useHttpOnly="true">
+                    <Valve className="org.apache.catalina.valves.StuckThreadDetectionValve" threshold="60"/>
+                </Context>
+            </Host>
+        </Engine>
+    </Service>
+</Server>

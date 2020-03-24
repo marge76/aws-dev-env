@@ -1,0 +1,89 @@
+# Jira Install
+- name: download jira
+  get_url:
+    url: "{{ jira.URL }}"
+    dest: /tmp/
+
+- name: change the permissions of the binary so it can be executed.
+  file:
+    path: "/tmp/{{ jira.FileName }}"
+    mode: 0777
+
+- name: execute jira binary
+  shell: "yes '' | ./{{ jira.FileName }}"
+  args:
+    chdir: /tmp/
+
+
+########## Fetch Vault certificate, process it and import JKS file to keystore ##############
+# Housekeeping
+- name: Clear private key file if already exists
+  file:
+    state: absent
+    path: "/tmp/priv_key.key"
+
+- name: If the keystore exists, destroy it.
+  file:
+    state: absent
+    path: "/opt/atlassian/jira/host.jks"
+
+# Stop Jira
+- name: stop jira
+  shell: /etc/init.d/jira stop
+
+# Fetch certificate and process
+- name: fetch Certificate from vault
+  shell: curl --header "X-Vault-Token:{{ lookup('file', '/home/{{ workspaceUser }}/SecureFiles/{{ vault.host }}/tmp/key6.json') }}" --request POST --data '{"common_name":"{{jira.host}}","ip_sans":"{{ jira.ip }}", "ttl":"{{ vault.cert_ttl }}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{ vault.role_name }} >> certificate_raw.json -k
+  args:
+    chdir: /tmp
+
+- name: extract certificate information from json
+  shell: jq -r ".data.certificate" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/certificate.crt
+
+- name: extract private key information from json
+  shell: jq -r ".data.private_key" /tmp/certificate_raw.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/priv_key.key
+
+
+- name: Combine the jira.crt and jira.key files in to a .p12 file
+  expect:
+    echo: yes
+    shell: openssl pkcs12 -export -in /tmp/certificate.crt -inkey /tmp/priv_key.key -name {{ jira.host }} -out /tmp/jira.p12
+    responses:
+      (?i)password: "{{ jiraKeyStorePass }}"
+
+- name: Import the combined certificate and key file in to the keystore
+  expect:
+    echo: yes
+    shell: /opt/atlassian/jira/jre/bin/keytool -importkeystore -srckeystore /tmp/jira.p12 -destkeystore /opt/atlassian/jira/host.jks -srcstoretype pkcs12
+    responses:
+      (?i)password: "{{ jiraKeyStorePass }}"
+      (?i)overwrite: "yes"
+
+# Transfer Intermediate certificate and import to keystore
+- name: Transfer the intermediate certificate via scp
+  copy:
+    src: /home/{{ workspaceUser }}/SecureFiles/{{ vault.host }}/tmp/intermediate_cert.crt
+    dest: /tmp/intermediate_cert.crt
+
+- name: Import the intermediate certificate in to the keystore
+  expect:
+    echo: yes
+    shell: /opt/atlassian/jira/jre/bin/keytool -import -alias cedc_int -file /tmp/intermediate_cert.crt -keystore /opt/atlassian/jira/jre/lib/security/cacerts
+    responses:
+      (?i)password: "changeit"
+      (?i)Trust this certificate: "yes"
+
+# Configure server files and reboot
+
+- name: Replace jira server xml file from template
+  template:
+      src: jiraconf.j2
+      dest:  /opt/atlassian/jira/conf/server.xml
+
+- name: Replace jira web xml file from template
+  template:
+     src: jiraweb.j2
+     dest: /opt/atlassian/jira/atlassian-jira/WEB-INF/web.xml
+
+- name: start jira via initd
+  shell: /etc/init.d/jira start

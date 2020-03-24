@@ -1,0 +1,27 @@
+# bitbucket.properties variables
+bitbucket:
+  host: bitbucket.{{ domain }}
+  ip: "{{ ansible_facts.eth0.ipv4.address }}" #  IP of tool server
+  port: 8090 # port
+  version: 5.16.0 # version of bb downloaded
+  FileName: atlassian-bitbucket-{{ version }}-x64.bin # file name of downloaded file
+  URL: https://www.atlassian.com/software/stash/downloads/binary/{{ FileName }} # download url
+  config_file_location: /var/atlassian/application-data/bitbucket/shared/bitbucket.properties
+  HTTPSecureServerPort: 8443 # secure port to connect via https
+  keystoreFile: /opt/atlassian/bitbucket/5.16.0/host.jks # MUST CHANGE *VERSION* IN THIS VARIABLE TO MATCH bitbucket.version
+  keystorePass: 123456! # extract to ans-vault
+  sslEnabledProtocols: TLSv1.2
+  sslProtocol: TLSv1.2
+  ciphers:
+    TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+    TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384,
+    TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+    TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256,
+    TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,
+    TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+    TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384,TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384,
+    TLS_ECDH_RSA_WITH_AES_256_CBC_SHA,TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA,
+    TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+    TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+    TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256,
+    TLS_ECDH_RSA_WITH_AES_128_CBC_SHA,TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA

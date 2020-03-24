@@ -1,0 +1,28 @@
+domain: tools.cedc.cloud
+okdDomain: test.cedc.cloud
+okd_ca_common_name: "okd_ca.{{ domain }}"
+bucketName: cedcsecurebucket
+vault:
+  host: vault.{{ domain }}
+  port: 8200
+  cert_ttl: 8759h #must be less than when your Intermediate Certificate Authority expires
+  role_name: dev_tools
+  okd_role_name: test_role
+  team_role_name: team
+  int_ca: pki_int_cedc
+  okd_ca: pki_int_okd
+  project_name: "cedc"
+psql:
+  dbName: "cedc_db"
+  dbUser: "db_user"
+okd:
+  username: "admin"
+  admin_user: "admin"
+  password: "{{ okdUserPassword }}"
+  pipeline_user: "pipeline_user"
+  bucketname: okd
+  master_name: okd
+  node_name: okd-node
+jdk:
+  version: 8
+  build: 211

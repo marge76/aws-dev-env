@@ -1,0 +1,22 @@
+squidProxy:
+  host: squid.{{ domain }}
+  ec2ip: "{{ ansible_default_ipv4.address }}"
+  ssl_certificate_path: /etc/squid/ssl/
+  squid_version: 3.5.13
+  dns_resolver: 8.8.8.8
+
+squid_install_from_source_dependencies:
+  - perl
+  - gcc
+  - autoconf
+  - automake
+  - make
+  - sudo
+  - wget
+  - gcc-c++
+  - libxml2-devel
+  - libcap-devel
+  - libtool
+  - libtool-ltdl-devel
+  - openssl
+  - openssl-devel

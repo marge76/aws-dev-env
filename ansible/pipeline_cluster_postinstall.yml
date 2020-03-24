@@ -1,0 +1,31 @@
+- name: generate persistent volumes on cluster machines
+  hosts: nodes
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: okd-cluster-postinstall
+
+- name: generate user account policies and prepare registry secrets for synchronisation
+  hosts: masters
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: okd-cluster-master-postinstall
+
+- name: syncronise registry secrets with jenkins server and nodes
+  hosts: registry-access
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: okd-cluster-sync
+
+- name: Deploy SonarCube as service within OKD
+  hosts: masters
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: okd-ci-services

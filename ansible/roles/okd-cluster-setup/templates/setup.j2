@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Disable the EPEL repository globally so that is not accidentally used during later steps of the installation
+sed -i -e "s/^enabled=1/enabled=0/" /etc/yum.repos.d/epel.repo
+
+cat <<EOD > /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4 
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+{{ ansible_default_ipv4.address }} {{ inventory_hostname }} console console.{{ inventory_hostname }}
+EOD
+
+if [ -z $DISK ]; then 
+	echo "Not setting the Docker storage."
+else
+	cp /etc/sysconfig/docker-storage-setup /etc/sysconfig/docker-storage-setup.bk
+
+	echo DEVS=$DISK > /etc/sysconfig/docker-storage-setup
+	echo VG=DOCKER >> /etc/sysconfig/docker-storage-setup
+	echo SETUP_LVM_THIN_POOL=yes >> /etc/sysconfig/docker-storage-setup
+	echo DATA_SIZE="100%FREE" >> /etc/sysconfig/docker-storage-setup
+
+	systemctl stop docker
+
+	rm -rf /var/lib/docker
+	wipefs --all $DISK
+	docker-storage-setup
+fi
+
+systemctl restart docker
+systemctl enable docker
+
+if [ ! -f ~/.ssh/id_rsa ]; then
+	ssh-keygen -q -f ~/.ssh/id_rsa -N ""
+	cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+	ssh -o StrictHostKeyChecking=no root@$IP "pwd" < /dev/null
+fi
+
+export METRICS="True"
+export LOGGING="True"
+
+memory=$(cat /proc/meminfo | grep MemTotal | sed "s/MemTotal:[ ]*\([0-9]*\) kB/\1/")
+
+if [ "$memory" -lt "4194304" ]; then
+	export METRICS="False"
+fi
+
+if [ "$memory" -lt "16777216" ]; then
+	export LOGGING="False"
+fi
+
+echo "beginning OKD installation"

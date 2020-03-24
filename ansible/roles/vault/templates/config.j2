@@ -1,0 +1,17 @@
+{
+"listener": [{
+"tcp": {
+"address" : "0.0.0.0:8200",
+"tls_disable" : 1
+}
+}],
+"api_addr": "{{ ec2http }}",
+"storage": {
+    "postgresql": {
+    "connection_url": "postgresql://{{ psql.dbUser }}:{{ postgresPassword }}@localhost:5432/{{ psql.dbName }}?sslmode=disable"
+    }
+},
+"max_lease_ttl": "8760h",
+"default_lease_ttl": "8760h",
+"ui":true
+}

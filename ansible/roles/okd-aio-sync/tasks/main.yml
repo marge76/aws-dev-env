@@ -1,0 +1,25 @@
+- name: install rsync on remote nodes
+  yum:
+    name: rsync
+    state: latest
+
+- name: Create /etc/docker/certs.d
+  file:
+    path: /etc/docker/
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+
+- name: push registry certificates to nodes
+  synchronize: 
+    src: /home/{{ workspaceUser }}/certs.d
+    dest: /etc/docker/
+    dirs: yes 
+    mode: push 
+
+- name: restart docker on nodes
+  command: systemctl restart docker
+
+- name: update box trust store
+  command: update-ca-trust enable
