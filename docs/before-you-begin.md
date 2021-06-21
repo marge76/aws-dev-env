@@ -89,7 +89,7 @@ You must select the region: London (`eu-west-2`).
 Amazon's Simple Email Service (SES) is only available in the Ireland
 region, the SES only acts as a relay.
 
-For the provisioning of WorkSpaces, Microsoft Active directories must be used.
+For the provisioning of WorkSpaces, Microsoft Active Directories must be used.
 
 <h1>Pathways</h1>
 
