@@ -34,16 +34,16 @@ When pulling this project, ensure you remove the .tfstate and .tfstatebackup fil
 For Terraform to work on your machine, you must first install Terraform and add it to your terminal $PATH. All these instructions are for Mac users only; other platforms will follow.
 
 ## For Mac OS
-1. Downloading Terraform for Mac. The following command will download the Terraform .zip file from the HashiCorp website.
+1. Downloading Terraform for Mac. The following example command will download the Terraform .zip file from the HashiCorp website. You should look to use the latest version available.
 
 ```
-wget https://releases.hashicorp.com/terraform/0.11.10/terraform_0.11.10_darwin_amd64.zip
+wget https://releases.hashicorp.com/terraform/0.15.5/terraform_0.15.5_darwin_amd64.zip
 ```
 
 2. Next unzip the folder.
 
 ```
-unzip terraform_0.11.10_darwin_amd64.zip
+unzip terraform_0.15.5_darwin_amd64.zip
 ```
 
 3. Move the Terraform file to your terminal path
@@ -61,7 +61,7 @@ terraform --version
 Your should get a version number something like:
 
 ```
-Terraform v0.11.10
+Terraform v0.15.5
 ```
 
 5. That's it. You should now have Terraform installed and be able to run any Terraform command.
@@ -80,7 +80,7 @@ terraform -v
 ```
 Your should get a version number something like:
 ```
-Terraform v0.11.10
+Terraform v0.15.5
 ```
 -----
 
