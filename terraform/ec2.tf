@@ -28,67 +28,17 @@ data "aws_ami" "amazon_windows_2016" {
   }
 }
 
+data "aws_ami" "openvpn" {
+  most_recent = true
+  owners      = ["679593333241"]
+
+  filter {
+    name   = "product-code"
+    values = ["f2ew2wrz425a1jagnifd02u5t"]
+  }
+}
+
 ############## EC2 in availability Zone 2a-atlassian ##################
-
-# Centos EC2 instance for Squid Proxy
-
-resource "aws_instance" "ec2-eu-west-2a-squid-proxy-tools" {
-  ami                         = "${data.aws_ami.centos.id}"
-  instance_type               = "t3.xlarge"
-  subnet_id                   = "${aws_subnet.subnet-eu-west2a-pub-tools.id}"
-  vpc_security_group_ids      = ["${aws_security_group.ec2_linux_sg.id}", "${aws_security_group.ec2_squid_sg.id}"]
-  iam_instance_profile        = "${aws_iam_instance_profile.PatchManagerRoleProfile.name}"
-  source_dest_check           = false
-  associate_public_ip_address = "true"
-  key_name                    = "${var.project["ec2_key_name"]}"
-  monitoring                  = true
-
-  tags = {
-    Name       = "ec2-eu-west-2a-squid-proxy-tools"
-    Managed    = "Managed By Terraform"
-    PatchGroup = "defaultCentOSBaseline"
-  }
-
-  volume_tags = {
-    Name     = "ec2-eu-west-2a-squid-proxy-tools"
-    Managed  = "Managed By Terraform"
-    snapshot = "daily"
-  }
-
-  root_block_device {
-    volume_type           = "gp2"
-    delete_on_termination = false
-  }
-}
-
-resource "aws_instance" "ec2-eu-west-2a-squid-proxy-workspace" {
-  ami                         = "${data.aws_ami.centos.id}"
-  instance_type               = "t3.xlarge"
-  subnet_id                   = "${aws_subnet.subnet-eu-west-2a-pub-workspaces.id}"
-  vpc_security_group_ids      = ["${aws_security_group.ec2_linux_sg_workspace.id}", "${aws_security_group.ec2_squid_sg_workspace.id}"]
-  iam_instance_profile        = "${aws_iam_instance_profile.PatchManagerRoleProfile.name}"
-  source_dest_check           = false
-  associate_public_ip_address = "true"
-  key_name                    = "${var.project["ec2_key_name"]}"
-  monitoring                  = true
-
-  tags = {
-    Name       = "ec2-eu-west-2a-squid-proxy-workspace"
-    Managed    = "Managed By Terraform"
-    PatchGroup = "defaultCentOSBaseline"
-  }
-
-  volume_tags = {
-    Name     = "ec2-eu-west-2a-squid-proxy-workspace"
-    Managed  = "Managed By Terraform"
-    snapshot = "daily"
-  }
-
-  root_block_device {
-    volume_type           = "gp2"
-    delete_on_termination = false
-  }
-}
 
 # Centos EC2 instance for Bitbucket
 resource "aws_instance" "ec2-eu-west-2a-tools-bitbucket" {
@@ -212,7 +162,7 @@ resource "aws_instance" "ec2-eu-west-2a-tools-vault" {
 # Windows server 2k16 EC2 instance for AD Management
 resource "aws_instance" "ec2-eu-west-2a-tools-admanage" {
   ami                     = "${data.aws_ami.amazon_windows_2016.image_id}"
-  disable_api_termination = "true"
+  disable_api_termination = "false"
   instance_type           = "t2.medium"
   subnet_id               = "${aws_subnet.subnet-2a-priv-tools-ops.id}"
   vpc_security_group_ids  = ["${aws_security_group.ec2_windows_sg.id}"]
@@ -237,17 +187,6 @@ resource "aws_instance" "ec2-eu-west-2a-tools-admanage" {
     volume_type           = "gp2"
     volume_size           = 30
     delete_on_termination = false
-  }
-
-  provisioner "file" {
-    source      = "powershell_scripts/"
-    destination = "C:/Users/admin/Desktop/scripts"
-
-    connection {
-      type        = "ssh"
-      user        = "centos"
-      private_key = "${file("${var.project["path_to_EC2_private_key"]}")}"
-    }
   }
 
   user_data = <<EOF
@@ -404,4 +343,34 @@ resource "aws_instance" "ec2-eu-west-2a-okd-node" {
   }
 
   count = "${var.project["okd_cluster"]}"
+}
+
+resource "aws_instance" "ec2-eu-west-2a-openvpn" {
+  ami                         = "${data.aws_ami.openvpn.id}"
+  disable_api_termination     = "true"
+  instance_type               = "t2.medium"
+  subnet_id                   = "${aws_subnet.subnet-eu-west-2a-pub-workspaces.id}"
+  vpc_security_group_ids      = ["${aws_security_group.ec2-openvpn-sg.id}"]
+  associate_public_ip_address = "true"
+  iam_instance_profile        = "${aws_iam_instance_profile.PatchManagerRoleProfile.name}"
+  key_name                    = "${var.project["ec2_key_name"]}"
+  monitoring                  = true
+
+  tags = {
+    Name       = "ec2-eu-west-2a-openvpn"
+    Managed    = "Managed By Terraform"
+    PatchGroup = "defaultCentOSBaseline"
+  }
+
+  volume_tags = {
+    Name     = "ec2-eu-west-2a-openvpn"
+    Managed  = "Managed By Terraform"
+    snapshot = "daily"
+  }
+
+  root_block_device {
+    volume_type           = "gp2"
+    delete_on_termination = false
+    volume_size           = 256
+  }
 }

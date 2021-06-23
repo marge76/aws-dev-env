@@ -1,5 +1,5 @@
 - name: Login to OC
-  command: oc login -u admin -p "{{ okdUserPassword }}"
+  command: oc login -u admin -p "{{ okdAdminPassword }}"
 
 - name: Create a new project
   command: oc new-project {{ sonarqube.root_proj_name }}
@@ -37,4 +37,3 @@
 - name:  Move jar to plugins dir
   shell: oc exec $(oc get pods --selector app={{ sonarqube.sonaqubeAppName }} -o jsonpath='{range .items[*].metadata}{.name}{end}') \
     -- mv sonarqube-community-branch-plugin-1.0.2.jar /opt/sonarqube/data/extensions/plugins
-

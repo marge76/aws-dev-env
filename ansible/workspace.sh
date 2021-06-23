@@ -20,39 +20,30 @@ ansible_user=centos
 ansible_private_key_file='{{ private_key_file }}'
 ansible_become_pass='{{ sudo_pass }}'
 
-## Following config allows us to connect to the squid proxy tools server via bitbucket host i.e. jump server
-[squid-proxy-tools:vars]
-ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -q centos@bitbucket.tools.cedc.cloud"'
-
 [vault-server]
-vault.tools.cedc.cloud
+vault.tools.<<team-name>>.cloud
 
 [bitbucket-server]
-bitbucket.tools.cedc.cloud 
+bitbucket.tools.<<team-name>>.cloud
 
 [confluence-server]
-confluence.tools.cedc.cloud 
+confluence.tools.<<team-name>>.cloud
 
 [jenkins-server]
-jenkins.tools.cedc.cloud 
+jenkins.tools.<<team-name>>.cloud
 
 [jira-server]
-jira.tools.cedc.cloud
+jira.tools.<<team-name>>.cloud
 
-[squid-proxy-tools]
-squid-tools.tools.cedc.cloud 
-
-[squid-proxy-workspace]
-squid-workspace.tools.cedc.cloud
 
 ##### OpenShift All-In-One Specific #####
 [okd-server]
-okd.test.cedc.cloud 
+okd.test.<<team-name>>.cloud
 
 [registry-access] # add below all hostnames of servers that will access the Docker registry (Jenkins)
-jenkins.tools.cedc.cloud
+jenkins.tools.<<team-name>>.cloud
 
-######################################### 
+#########################################
 
 [workspaces]
 

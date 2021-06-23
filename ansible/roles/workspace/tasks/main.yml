@@ -120,32 +120,3 @@
   lineinfile:
     path: $HOME/.bashrc
     line: 'export VAULT_ADDR="https://{{ vault.host }}:8200"'
-
-#### Squid Proxy Certificate installation ####
-- name: Get Squid Root Certificate for tools from S3 bucket
-  become: yes
-  aws_s3:
-    mode: get
-    aws_access_key: "{{ aws_access_key }}"
-    aws_secret_key: "{{ aws_secret_key }}"
-    aws_region: "{{ aws_region }}"
-    bucket: "{{ bucketName }}"
-    dest: /tmp/root_cert_squid_workspace.der
-    object: /squid/root_cert_squid_workspace.der
-
-- name: Install ca certificate tool
-  yum:
-    name: ca-certificates
-    state: present
-
-- name: Transfer the root certificate to trust store
-  shell: cp /tmp/root_cert_squid_workspace.der /etc/pki/ca-trust/source/anchors/root_cert_squid_workspace.crt
-
-- name: Enable the dynamic CA configuration feature
-  shell: update-ca-trust force-enable
-
-- name: Update CA trust
-  shell: update-ca-trust extract
-
-- name: Import a root certificate to java keystore
-  shell: keytool -import -alias squid_workspace -file /tmp/root_cert_squid_workspace.der -keystore /usr/java/jdk1.8.0_211-amd64/jre/lib/security/cacerts -noprompt -keypass changeit -storepass changeit

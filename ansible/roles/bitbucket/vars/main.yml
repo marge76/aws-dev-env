@@ -1,14 +1,14 @@
 # bitbucket.properties variables
 bitbucket:
   host: bitbucket.{{ domain }}
-  ip: "{{ ansible_facts.eth0.ipv4.address }}" #  IP of tool server
+  ip: "{{ ansible_facts.ens5.ipv4.address }}" #  IP of tool server
   port: 8090 # port
-  version: 5.16.0 # version of bb downloaded
-  FileName: atlassian-bitbucket-{{ version }}-x64.bin # file name of downloaded file
-  URL: https://www.atlassian.com/software/stash/downloads/binary/{{ FileName }} # download url
+  version: 7.0.1 # version of bb downloaded
+  FileName: atlassian-bitbucket-7.0.1-x64.bin # file name of downloaded file
+  URL: https://www.atlassian.com/software/stash/downloads/binary/atlassian-bitbucket-7.0.1-x64.bin # download url
   config_file_location: /var/atlassian/application-data/bitbucket/shared/bitbucket.properties
   HTTPSecureServerPort: 8443 # secure port to connect via https
-  keystoreFile: /opt/atlassian/bitbucket/5.16.0/host.jks # MUST CHANGE *VERSION* IN THIS VARIABLE TO MATCH bitbucket.version
+  keystoreFile: /opt/atlassian/bitbucket/7.0.1/host.jks # MUST CHANGE *VERSION* IN THIS VARIABLE TO MATCH bitbucket.version
   keystorePass: 123456! # extract to ans-vault
   sslEnabledProtocols: TLSv1.2
   sslProtocol: TLSv1.2

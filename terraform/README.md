@@ -14,14 +14,14 @@ Terraform uses the .tfstate file extension for its **state configuration** files
 
 This project contains two files:
 
-**cedc_terraform.tf**
+**<<team-name>>_terraform.tf**
 
 Houses the basic configuration of the environment
 **Only modify this file if a fundamental change to the structure of the environment is required.**
 
 **vars.tf**
 
-Houses the variables used in the main cedc_terraform.tf file.
+Houses the variables used in the main <<team-name>>_terraform.tf file.
 
 **ALL CHANGES MADE BY THE USER SHOULD BE IN THIS FILE ONLY.**
 
@@ -34,16 +34,16 @@ When pulling this project, ensure you remove the .tfstate and .tfstatebackup fil
 For Terraform to work on your machine, you must first install Terraform and add it to your terminal $PATH. All these instructions are for Mac users only; other platforms will follow.
 
 ## For Mac OS
-1. Downloading Terraform for Mac. The following example command will download the Terraform .zip file from the HashiCorp website. You should look to use the latest version available.
+1. Downloading Terraform for Mac. The following command will download the Terraform .zip file from the HashiCorp website.
 
 ```
-wget https://releases.hashicorp.com/terraform/0.15.5/terraform_0.15.5_darwin_amd64.zip
+wget https://releases.hashicorp.com/terraform/0.11.10/terraform_0.11.10_darwin_amd64.zip
 ```
 
 2. Next unzip the folder.
 
 ```
-unzip terraform_0.15.5_darwin_amd64.zip
+unzip terraform_0.11.10_darwin_amd64.zip
 ```
 
 3. Move the Terraform file to your terminal path
@@ -61,7 +61,7 @@ terraform --version
 Your should get a version number something like:
 
 ```
-Terraform v0.15.5
+Terraform v0.11.10
 ```
 
 5. That's it. You should now have Terraform installed and be able to run any Terraform command.
@@ -80,7 +80,7 @@ terraform -v
 ```
 Your should get a version number something like:
 ```
-Terraform v0.15.5
+Terraform v0.11.10
 ```
 -----
 
@@ -92,7 +92,7 @@ to get a list of commands used for Terraform.
 
 ## The .tf files
 
-As a rule of thumb users should only change the details in the vars.tf file. The cedc_terraform.tf file should be left alone.
+As a rule of thumb users should only change the details in the vars.tf file. The <<team-name>>_terraform.tf file should be left alone.
 
 You should save a local copy of the .tfstate and .tfstatebackup files so that you can manage your own environments, unless you are making a new environment.
 
@@ -123,7 +123,7 @@ terraform init
 
 ## Building an environment
 
-1. In order to create a new environment, you must first change your working directory to where both cedc_terraform.tf and vars.tf files are located.
+1. In order to create a new environment, you must first change your working directory to where both <<team-name>>_terraform.tf and vars.tf files are located.
 
 2. Apply the changes to the vars.tf files. Ensure all fields are filled in, else Terraform will throw errors or may build the environment incorrectly.
 

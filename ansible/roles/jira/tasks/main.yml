@@ -4,16 +4,6 @@
     url: "{{ jira.URL }}"
     dest: /tmp/
 
-- name: change the permissions of the binary so it can be executed.
-  file:
-    path: "/tmp/{{ jira.FileName }}"
-    mode: 0777
-
-- name: execute jira binary
-  shell: "yes '' | ./{{ jira.FileName }}"
-  args:
-    chdir: /tmp/
-
 
 ########## Fetch Vault certificate, process it and import JKS file to keystore ##############
 # Housekeeping
@@ -26,10 +16,6 @@
   file:
     state: absent
     path: "/opt/atlassian/jira/host.jks"
-
-# Stop Jira
-- name: stop jira
-  shell: /etc/init.d/jira stop
 
 # Fetch certificate and process
 - name: fetch Certificate from vault
@@ -47,17 +33,10 @@
 - name: Combine the jira.crt and jira.key files in to a .p12 file
   expect:
     echo: yes
-    shell: openssl pkcs12 -export -in /tmp/certificate.crt -inkey /tmp/priv_key.key -name {{ jira.host }} -out /tmp/jira.p12
+    command: openssl pkcs12 -export -in /tmp/certificate.crt -inkey /tmp/priv_key.key -name {{ jira.host }} -out /tmp/jira.p12
     responses:
       (?i)password: "{{ jiraKeyStorePass }}"
 
-- name: Import the combined certificate and key file in to the keystore
-  expect:
-    echo: yes
-    shell: /opt/atlassian/jira/jre/bin/keytool -importkeystore -srckeystore /tmp/jira.p12 -destkeystore /opt/atlassian/jira/host.jks -srcstoretype pkcs12
-    responses:
-      (?i)password: "{{ jiraKeyStorePass }}"
-      (?i)overwrite: "yes"
 
 # Transfer Intermediate certificate and import to keystore
 - name: Transfer the intermediate certificate via scp
@@ -68,7 +47,7 @@
 - name: Import the intermediate certificate in to the keystore
   expect:
     echo: yes
-    shell: /opt/atlassian/jira/jre/bin/keytool -import -alias cedc_int -file /tmp/intermediate_cert.crt -keystore /opt/atlassian/jira/jre/lib/security/cacerts
+    command: /opt/atlassian/jira/jre/bin/keytool -import -alias <<team-name>>_int -file /tmp/intermediate_cert.crt -keystore /opt/atlassian/jira/jre/lib/security/cacerts
     responses:
       (?i)password: "changeit"
       (?i)Trust this certificate: "yes"

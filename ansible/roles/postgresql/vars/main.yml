@@ -1,5 +1,5 @@
 psql:
-  dbName: "postgresDB"
+  dbName: "<<team-name>>_db"
   dbType: "postgres72"
   schemaType: "public"
   dbUser: "db_user"

@@ -32,7 +32,7 @@
                    protocol="org.apache.coyote.http11.Http11NioProtocol"
                    scheme="http" proxyName="<subdomain>.<domain>.com" proxyPort="80"/>
         -->
-        
+
         <!--
          ==============================================================================================================
          HTTPS - Direct connector with no proxy, for unproxied HTTPS access to Confluence.
@@ -49,7 +49,7 @@
                    clientAuth="false" sslProtocol="{{ confluence.sslProtocol }}" sslEnabledProtocols="{{ confluence.sslEnabledProtocols }}" SSLEnabled="true"
                    URIEncoding="UTF-8" keystorePass="{{ sudo_pass }}" keystoreFile="{{ confluence.keystoreFile }}" keyAlias="{{ confluence.host }}"
                    ciphers="{{ confluence.ciphers }}"/>
-        
+
 
         <!--
          ==============================================================================================================

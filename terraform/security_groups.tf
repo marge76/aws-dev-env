@@ -55,7 +55,7 @@ resource "aws_security_group" "ec2_linux_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
- tags = {
+  tags = {
     Name = "ec2_linux_sg"
   }
 }
@@ -81,7 +81,7 @@ resource "aws_security_group" "ec2_linux_sg_workspace" {
     cidr_blocks = ["${var.workspace-vpc["cidr"]}"]
   }
 
- tags = {
+  tags = {
     Name = "ec2_linux_sg_workspace"
   }
 }
@@ -139,7 +139,7 @@ resource "aws_security_group" "ec2_windows_sg" {
     cidr_blocks = ["${var.workspace-vpc["cidr"]}"]
   }
 
- tags = {
+  tags = {
     Name = "ec2_windows_sg"
   }
 }
@@ -157,7 +157,7 @@ resource "aws_security_group" "ldap_sg" {
     cidr_blocks = ["${var.workspace-vpc["cidr"]}"]
   }
 
- tags = {
+  tags = {
     Name = "ldap_sg"
   }
 }
@@ -191,7 +191,7 @@ resource "aws_security_group" "smtp_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
- tags = {
+  tags = {
     Name = "smtp_sg"
   }
 }
@@ -209,7 +209,7 @@ resource "aws_security_group" "jira_sg" {
     cidr_blocks = ["${var.workspace-vpc["cidr"]}", "${var.tools-vpc["cidr"]}"]
   }
 
- tags = {
+  tags = {
     Name = "jira_sg"
   }
 }
@@ -227,7 +227,7 @@ resource "aws_security_group" "confluence_sg" {
     cidr_blocks = ["${var.workspace-vpc["cidr"]}", "${var.tools-vpc["cidr"]}"]
   }
 
- tags = {
+  tags = {
     Name = "confluence_sg"
   }
 }
@@ -253,7 +253,7 @@ resource "aws_security_group" "bitbucket_sg" {
     cidr_blocks = ["${var.workspace-vpc["cidr"]}", "${var.tools-vpc["cidr"]}"]
   }
 
- tags = {
+  tags = {
     Name = "bitbucket_sg"
   }
 }
@@ -287,7 +287,7 @@ resource "aws_security_group" "jenkins_sg" {
     cidr_blocks = ["${var.test-vpc["cidr"]}"]
   }
 
- tags = {
+  tags = {
     Name = "jenkins_sg"
   }
 }
@@ -305,7 +305,7 @@ resource "aws_security_group" "vault_sg" {
     cidr_blocks = ["${var.workspace-vpc["cidr"]}", "${var.tools-vpc["cidr"]}"]
   }
 
- tags = {
+  tags = {
     Name = "vault_sg"
   }
 }
@@ -387,7 +387,7 @@ resource "aws_security_group" "okd_sg" {
     cidr_blocks = ["${var.tools-vpc["cidr"]}"]
   }
 
- tags = {
+  tags = {
     Name = "okd_sg"
   }
 }
@@ -469,7 +469,7 @@ resource "aws_security_group" "okd_masters" {
     cidr_blocks = ["${var.test-vpc["cidr"]}"]
   }
 
- tags = {
+  tags = {
     Name = "okd_master"
   }
 
@@ -545,7 +545,7 @@ resource "aws_security_group" "okd_nodes" {
     cidr_blocks = ["${var.test-vpc["cidr"]}"]
   }
 
- tags = {
+  tags = {
     Name = "okd_nodes"
   }
 
@@ -605,99 +605,89 @@ resource "aws_security_group" "ec2_linux_test_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
- tags = {
+  tags = {
     Name = "ec2_linux_test_sg"
   }
 }
 
-resource "aws_security_group" "ec2_squid_sg" {
-  name        = "ec2_squid_sg"
-  description = "Standard Security group for Squid Proxy EC2 "
-  vpc_id      = "${aws_vpc.vpc-eu-west-2-tools.id}"
-
-  ingress {
-    from_port   = "3128"
-    to_port     = "3129"
-    protocol    = "6"
-    description = "Allow TCP traffic from Tools, Workspaces and okd subnets through squid configured ports"
-    cidr_blocks = ["${var.tools-vpc["cidr"]}", "${var.workspace-vpc["cidr"]}", "${var.test-vpc["cidr"]}"]
-  }
+resource "aws_security_group" "ec2-openvpn-sg" {
+  name        = "ec2-openvpn-sg"
+  description = "Security group for OpenVPN server "
+  vpc_id      = "${aws_vpc.vpc-eu-west-2-workspaces.id}"
 
   ingress {
     from_port   = "22"
     to_port     = "22"
     protocol    = "6"
-    description = "Allow tools to SSH onto the EC2"
-    cidr_blocks = ["${var.tools-vpc["cidr"]}"]
+    description = "Allow Workspaces to SSH onto the EC2"
+    cidr_blocks = ["${var.workspace-vpc["cidr"]}"]
   }
 
   ingress {
-    from_port   = "80"
-    to_port     = "80"
-    protocol    = "6"
-    description = "Allow HTTP traffic from Tools, Workspaces and okd subnets through squid configured ports"
-    cidr_blocks = ["${var.tools-vpc["cidr"]}", "${var.workspace-vpc["cidr"]}", "${var.test-vpc["cidr"]}"]
+    from_port   = "8"
+    to_port     = "0"
+    protocol    = "ICMP"
+    description = "Allow Workspaces to ping EC2s"
+    cidr_blocks = ["${var.workspace-vpc["cidr"]}"]
   }
 
   ingress {
-    from_port   = "443"
-    to_port     = "443"
-    protocol    = "6"
-    description = "Allow secure HTTP, Workspaces and okd subnets through squid configured ports"
+    from_port   = "969"
+    to_port     = "969"
+    protocol    = "TCP"
+    description = "Allow clients to access openvpn"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = "1194"
+    to_port     = "1194"
+    protocol    = "UDP"
+    description = "Allow vpn connection"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = "951"
+    to_port     = "951"
+    protocol    = "TCP"
+    description = "Allow clients to access openvpn"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = "0"
+    to_port     = "65535"
+    protocol    = "TCP"
+    description = "Allow all TCP traffic to pass to Tools, Test and Workspaces subnets"
     cidr_blocks = ["${var.tools-vpc["cidr"]}", "${var.workspace-vpc["cidr"]}", "${var.test-vpc["cidr"]}"]
   }
 
   egress {
     from_port   = "0"
-    to_port     = "0"
-    protocol    = "-1"
-    description = "Allow all traffic outbound"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
- tags = {
-    Name = "ec2_squid_sg"
-  }
-}
-
-resource "aws_security_group" "ec2_squid_sg_workspace" {
-  name        = "ec2_squid_sg_workspace"
-  description = "Standard Security group for Squid Proxy EC2 in workspace VPC"
-  vpc_id      = "${aws_vpc.vpc-eu-west-2-workspaces.id}"
-
-  ingress {
-    from_port   = "3126"
-    to_port     = "3128"
-    protocol    = "6"
-    description = "Allow TCP traffic from Tools, Workspaces and okd subnets through squid configured ports"
-    cidr_blocks = ["${var.tools-vpc["cidr"]}", "${var.workspace-vpc["cidr"]}", "${var.test-vpc["cidr"]}"]
-  }
-
-  ingress {
-    from_port   = "80"
-    to_port     = "80"
-    protocol    = "6"
-    description = "Allow HTTP traffic from Tools, Workspaces and okd subnets through squid configured ports"
-    cidr_blocks = ["${var.tools-vpc["cidr"]}", "${var.workspace-vpc["cidr"]}", "${var.test-vpc["cidr"]}"]
-  }
-
-  ingress {
-    from_port   = "443"
-    to_port     = "443"
-    protocol    = "6"
-    description = "Allow secure HTTP, Workspaces and okd subnets through squid configured ports"
+    to_port     = "65535"
+    protocol    = "UDP"
+    description = "Allow all UDP traffic to pass to Tools Test and Workspaces subnets"
     cidr_blocks = ["${var.tools-vpc["cidr"]}", "${var.workspace-vpc["cidr"]}", "${var.test-vpc["cidr"]}"]
   }
 
   egress {
-    from_port   = "0"
-    to_port     = "0"
-    protocol    = "-1"
-    description = "Allow all traffic outbound"
+    from_port   = "443"
+    to_port     = "443"
+    protocol    = "6"
+    description = "HTTPS internet traffic"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
- tags = {
-    Name = "ec2_squid_sg_workspace"
+  egress {
+    from_port   = "80"
+    to_port     = "80"
+    protocol    = "6"
+    description = "HTTP internet traffic"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "ec2_linux_test_sg"
   }
 }

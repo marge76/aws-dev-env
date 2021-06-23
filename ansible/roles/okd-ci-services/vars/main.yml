@@ -5,3 +5,4 @@ sonarqube:
   postgresDBName: sonaransible
   postgresAppName: sonarqubedb
   sonaqubeAppName: sonarqube
+  postgresPassword: {{ sonarqubePostgresPassword}}

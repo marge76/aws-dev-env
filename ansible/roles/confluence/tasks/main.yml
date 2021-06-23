@@ -3,14 +3,7 @@
   get_url:
     url: "{{ confluence.URL }}"
     dest: /tmp/
-- name: change the permissions of the binary so it can be executed.
-  file:
-    path: /tmp/{{ confluence.FileName }}
-    mode: 0777
-- name: execute confluence binary
-  shell: yes '' | ./{{ confluence.FileName }}
-  args:
-    chdir: /tmp/
+
 # request certificate, process and import in to keystore
 ########## Fetch Vault certificate, process it and import JKS file to keystore ##############
 # Tidy up
@@ -23,11 +16,6 @@
   file:
     state: absent
     path: "/tmp/priv_key.key"
-
-- name: If the keystore exists, destroy it.
-  file:
-    state: absent
-    path: "{{ confluence.keystoreFile }}"
 
 # Fetch certificate and process
 - name: fetch Certificate from vault
@@ -44,17 +32,10 @@
 - name: Combine the confluence.crt and confluence.key files in to a .p12 file
   expect:
     echo: yes
-    shell: openssl pkcs12 -export -in /tmp/certificate.crt -inkey /tmp/priv_key.key -name {{ confluence.host }} -out /tmp/confluence.p12
+    command: openssl pkcs12 -export -in /tmp/certificate.crt -inkey /tmp/priv_key.key -name {{ confluence.host }} -out /tmp/confluence.p12
     responses:
       (?i)password: "{{ sudo_pass }}"
 
-- name: Import the combined certificate and key file in to the keystore
-  expect:
-    echo: yes
-    shell: /opt/atlassian/confluence/jre/bin/keytool -importkeystore -srckeystore /tmp/confluence.p12 -destkeystore "{{ confluence.keystoreFile }}" -srcstoretype pkcs12
-    responses:
-      (?i)password: "{{ sudo_pass }}"
-      (?i)overwrite: "yes"
 
 # Transfer Intermediate certificate and import to keystore
 - name: Transfer the intermediate certificate via scp
@@ -65,7 +46,7 @@
 - name: Import the intermediate certificate in to the keystore
   expect:
     echo: yes
-    shell: /opt/atlassian/confluence/jre/bin/keytool -import -alias cedc_int -file /tmp/intermediate_cert.crt -keystore /opt/atlassian/confluence/jre/lib/security/cacerts
+    command: /opt/atlassian/confluence/jre/bin/keytool -import -alias <<team-name>>_int -file /tmp/intermediate_cert.crt -keystore /opt/atlassian/confluence/jre/lib/security/cacerts
     responses:
       (?i)password: "changeit"
       (?i)Trust this certificate: "yes"

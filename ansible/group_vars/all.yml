@@ -1,7 +1,7 @@
-domain: tools.cedc.cloud
-okdDomain: test.cedc.cloud
+domain: tools.<<team-name>>.cloud
+okdDomain: test.<<team-name>>.cloud
 okd_ca_common_name: "okd_ca.{{ domain }}"
-bucketName: cedcsecurebucket
+bucketName: <<team-name>>-securebucket
 vault:
   host: vault.{{ domain }}
   port: 8200
@@ -9,18 +9,18 @@ vault:
   role_name: dev_tools
   okd_role_name: test_role
   team_role_name: team
-  int_ca: pki_int_cedc
+  int_ca: pki_int_<<team-name>>
   okd_ca: pki_int_okd
-  project_name: "cedc"
+  project_name: "<<team-name>>"
 psql:
-  dbName: "cedc_db"
+  dbName: "<<team-name>>_db"
   dbUser: "db_user"
 okd:
   username: "admin"
   admin_user: "admin"
-  password: "{{ okdUserPassword }}"
+  password: "{{ okdAdminPassword }}"
   pipeline_user: "pipeline_user"
-  bucketname: okd
+  bucketName: <<team-name>>-securebucket
   master_name: okd
   node_name: okd-node
 jdk:

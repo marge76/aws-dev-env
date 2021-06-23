@@ -13,7 +13,7 @@
 
 - name: Fetch Certificate from Vault
   shell: |
-    curl --header "X-Vault-Token:{{ vault_key6_token }}" --request POST --data '{"common_name":"{{ item }}.{{ domain }}","ip_sans":"172.26.1.43", "ttl":"{{ vault.cert_ttl }}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{ vault.role_name }} >> /tmp/SecureFiles/{{ item }}.json -k
+    curl --header "X-Vault-Token:{{ lookup('file', '/home/{{ workspaceUser }}/SecureFiles/{{ vault.host }}/tmp/key6.json') }}" --request POST --data '{"common_name":"{{ item }}.{{ domain }}","ip_sans":"172.26.1.43", "ttl":"{{ vault.cert_ttl }}"}' https://{{ vault.host }}:{{ vault.port }}/v1/{{ vault.int_ca }}/issue/{{ vault.role_name }} >> /tmp/SecureFiles/{{ item }}.json -k
     jq -r ".data.certificate" /tmp/SecureFiles/{{ item }}.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/SecureFiles/{{ item }}crt.crt
     jq -r ".data.private_key" /tmp/SecureFiles/{{ item }}.json | awk '{gsub(/\\n/,"\n")}1' > /tmp/SecureFiles/{{ item }}pri.key
   args:

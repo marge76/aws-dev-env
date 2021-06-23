@@ -2,17 +2,17 @@ variable "project" {
   type = "map"
 
   default = {
-    name                          = "CEDC"
+    name                          = "<<TEAM-NAME>>"
     region                        = "eu-west-2"
-    access_key                    = "XXXXXXX"
-    secret_key                    = "XXXXXXX"
-    windows_server_admin_pwd      = "XXXXXXX"
-    ec2_key_pair                  = "XXXXXXX"
-    ec2_key_name                  = "tools_key"
-    domain                        = "tools.cedc.cloud"
-    testdomain                    = "test.cedc.cloud"
-    path_to_EC2_private_key       = "~/XXXXXXX.pem"
-    create_secure_bucket          = 0
+    access_key                    = ""
+    secret_key                    = ""
+    windows_server_admin_pwd      = "letmeintowindows"
+    ec2_key_pair                  = ""
+    ec2_key_name                  = "tools_key_2"
+    domain                        = "tools.<<team-name>>.cloud"
+    testdomain                    = "test.<<team-name>>.cloud"
+    path_to_EC2_private_key       = ""
+    create_secure_bucket          = 1
     google_dns_server             = "8.8.8.8"
     ec2ScheduleCfTemplateLocation = "templates/ec2-scheduler.template"
 
@@ -26,7 +26,7 @@ variable "patchManager" {
   type = "map"
 
   default = {
-    name                         = "cedc-instance-patch"
+    name                         = "<<team-name>>-instance-patch"
     IAMRoleName                  = "PatchManagerIAMRoleTFNew"
     PolicyName                   = "PatchManagerIAMPolicyTFNew"
     maintenanceWindowIAMRoleName = "MaintenanceWindowRoleTFNew"
@@ -104,10 +104,10 @@ variable "ad" {
   type = "map"
 
   default = {
-    domain   = "ad.cedc.cloud"
-    password = "XXXXXXX"
+    domain   = "ad.<<team-name>>.cloud"
+    password = "<<password>>"
     size     = "Small"
-    alias    = "cedc-cloud"    #need to be unique, used for access url
+    alias    = "<<team-name>>-cloud"    #need to be unique, used for access url
   }
 }
 
@@ -115,6 +115,6 @@ variable "alarms" {
   type = "map"
 
   default = {
-    email = "ian.ensor-cic-uk@ibm.com"
+    email = "<<email>>"
   }
 }

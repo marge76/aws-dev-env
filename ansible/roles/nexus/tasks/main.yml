@@ -14,7 +14,7 @@
 
 - name: install Nexus OSS
   get_url:
-    url: http://download.sonatype.com/nexus/3/{{ nexus.version }}-unix.tar.gz
+    url:  https://download.sonatype.com/nexus/3/latest-unix.tar.gz 
     dest: /tmp/nexus.tar.gz
 
 - name: extract /tmp/nexus.tar.gz
