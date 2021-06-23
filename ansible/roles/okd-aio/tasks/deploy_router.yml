@@ -1,5 +1,5 @@
 - name: Login to OC
-  command: oc login -u admin -p "{{ okdUserPassword }}"
+  command: oc login -u admin -p "{{ okdAdminPassword }}"
 
 - name: Set project to default
   command: oc project default

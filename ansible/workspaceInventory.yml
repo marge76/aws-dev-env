@@ -1,7 +1,11 @@
 
 # [workspaces]
-<ip address> ansible_user=<active-directory-name>\\<user> ansible_ssh_pass=<ssh-password> ansible_become_pass=<sudo-password-for-user>
+
 # Add workspace IPs here e.g. 172.16.2.23 ansible_ssh_user=ad\\johnd ansible_ssh_pass=Changeit1! ansible_become_pass=Changeit1!
+172.16.1.76 ansible_user=ad\\bash_k ansible_ssh_pass=changeme2020! ansible_become_pass=changeme2020!
+172.16.1.127 ansible_user=ad\\martin_l ansible_ssh_pass=changeme2020! ansible_become_pass=changeme2020!
+172.16.2.167 ansible_user=ad\\joshua_r ansible_ssh_pass=changeme2020! ansible_become_pass=changeme2020!
+172.16.1.125 ansible_user=ad\\alex_c ansible_ssh_pass=changeme2020! ansible_become_pass=changeme2020!
 
 # DO NOT CHANGE--------------------------
 [localworkspace]

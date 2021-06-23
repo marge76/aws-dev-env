@@ -3,12 +3,12 @@ jira:
   host: jira.{{ domain }} # domain name of tool server
   ip: '{{ ansible_facts.eth0.ipv4.address }}' # ip of tool server
   port: 8080 # non-secured port tool runs on
-  URL: https://www.atlassian.com/software/jira/downloads/binary/atlassian-jira-software-7.13.2-x64.bin # download url
-  FileName: atlassian-jira-software-7.13.2-x64.bin # name of the file downloaded
+  URL: https://www.atlassian.com/software/jira/downloads/binary/atlassian-jira-software-8.7.1-x64.bin # download url
+  FileName: atlassian-jira-software-8.7.1-x64.bin # name of the file downloaded
   HTTPSPort: 8443 # secure port
   keystoreFile: /opt/atlassian/jira/host.jks # path to keystore
   sslEnabledProtocols: TLSv1.2 # keep as TLSV1.2
-  
+
   # Do not change the below tags
   ciphers: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
                        TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384,
@@ -22,4 +22,3 @@ jira:
                        TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
                        TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256,
                        TLS_ECDH_RSA_WITH_AES_128_CBC_SHA,TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA
-

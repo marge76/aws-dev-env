@@ -114,7 +114,7 @@ If you do not wish to import users and groups into your Active Directory, please
 
 Refer to this section once Terraform as successfully provisioned the AWS environment.
 
-1. RDP in to your Windows AD Manager server. Please refer section - [Connecting to a Windows EC2 from a Linux WorkSpace](./quick-reference.md#connecting-to-a-windows-ec2-from-a-linux-workspace)
+1. RDP in to your Windows AD Manager server as the ad/Admin account. Please refer section - [Connecting to a Windows EC2 from a Linux WorkSpace](./quick-reference.md#connecting-to-a-windows-ec2-from-a-linux-workspace)
  or [Connecting to a Windows EC2 from a Windows WorkSpace](./quick-reference.md#connecting-to-a-windows-ec2-from-a-windows-workspace)
 
 

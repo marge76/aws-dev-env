@@ -38,7 +38,7 @@ echo "Installing pip"
 sudo easy_install pip
 
 echo "Installing Ansible"
-sudo pip install ansible==2.6.5
+sudo pip install ansible
 
 echo "Installing passlib"
 sudo pip install passlib
@@ -56,15 +56,15 @@ ansible_become=yes
 
 
 [masters]
-okd.test.cedc.cloud openshift_schedulable=true # for multi node clusters, set schedulable=false
+okd.test.<<team-name>>.cloud openshift_schedulable=true # for multi node clusters, set schedulable=false
 
 
 [etcd]
-okd.test.cedc.cloud
+okd.test.<<team-name>>.cloud
 
 [nodes]
-okd.test.cedc.cloud openshift_node_group_name="node-config-master-infra"
-okd-node.test.cedc.cloud openshift_node_group_name="node-config-compute" openshift_schedulable=true 
+okd.test.<<team-name>>.cloud openshift_node_group_name="node-config-master-infra"
+okd-node.test.<<team-name>>.cloud openshift_node_group_name="node-config-compute" openshift_schedulable=true
 
 [OSEv3:children]
 masters
@@ -72,7 +72,7 @@ nodes
 etcd
 
 [registry-access] # add below all hostnames of servers that will access the Docker registry
-sync.tools.cedc.cloud
+sync.tools.<<team-name>>.cloud
 
 ###### INSTALLATION PARAMETERS - BE CAREFUL IF EDITING BELOW
 
@@ -93,12 +93,12 @@ debug_level=2
 # default subdomain to use for exposed routes, you should have wildcard dns
 # for *.apps.test.example.com that points at your infra nodes which will run
 # your router
-openshift_master_default_subdomain=apps.okd.test.cedc.cloud
+openshift_master_default_subdomain=apps.okd.test.<<team-name>>.cloud
 
 #Set cluster_hostname to point at your load balancer
-openshift_master_cluster_hostname=okd.test.cedc.cloud
+openshift_master_cluster_hostname=okd.test.<<team-name>>.cloud
 
-openshift_public_hostname=console.okd.test.cedc.cloud
+openshift_public_hostname=console.okd.test.<<team-name>>.cloud
 
 # htpasswd auth
 openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider'}]
@@ -138,12 +138,12 @@ if [ "$3" = "cluster" ] ; then
     ansible-playbook -i inventory_okd_cluster.txt -e "private_key_file=$2" openshift-ansible/playbooks/deploy_cluster.yml
 
 ### Post-installation tasks
-    ansible-playbook -i inventory_okd_cluster.txt --ask-vault-pass --extra-vars '@passwd.yml' -e "workspaceUser=$1 private_key_file=$2" pipeline_cluster_postinstall.yml 
+    ansible-playbook -i inventory_okd_cluster.txt --ask-vault-pass --extra-vars '@passwd.yml' -e "workspaceUser=$1 private_key_file=$2" pipeline_cluster_postinstall.yml
 
 fi
 
 if [ "$3" = "aio" ] ; then
 
-    ansible-playbook -i inventory.yml --ask-vault-pass --extra-vars '@passwd.yml' -e "workspaceUser=$1 private_key_file=$2" pipeline.yml 
+    ansible-playbook -i inventory.yml --ask-vault-pass --extra-vars '@passwd.yml' -e "workspaceUser=$1 private_key_file=$2" pipeline.yml
 
 fi

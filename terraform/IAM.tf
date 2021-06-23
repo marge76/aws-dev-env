@@ -1,6 +1,6 @@
 // admin role and policies
-resource "aws_iam_role" "cedc-admin" {
-  name = "cedc-admin"
+resource "aws_iam_role" "<<team-name>>-admin" {
+  name = "<<team-name>>-admin"
 
   assume_role_policy = <<EOF
 {
@@ -20,13 +20,13 @@ EOF
 }
 
 resource "aws_iam_role_policy_attachment" "admin-policy-attachment" {
-  role       = "${aws_iam_role.cedc-admin.name}"
+  role       = "${aws_iam_role.<<team-name>>-admin.name}"
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
 // developer role and policies
-resource "aws_iam_role" "cedc-developer" {
-  name = "cedc-developer"
+resource "aws_iam_role" "<<team-name>>-developer" {
+  name = "<<team-name>>-developer"
 
   assume_role_policy = <<EOF
 {
@@ -46,7 +46,7 @@ EOF
 }
 
 variable "developer_policy_arn" {
-  description = "IAM Policies for cedc-developer role"
+  description = "IAM Policies for <<team-name>>-developer role"
   type        = "list"
 
   default = ["arn:aws:iam::aws:policy/AmazonRoute53FullAccess",
@@ -56,14 +56,14 @@ variable "developer_policy_arn" {
 }
 
 resource "aws_iam_role_policy_attachment" "role-policy-attachment" {
-  role       = "${aws_iam_role.cedc-developer.name}"
+  role       = "${aws_iam_role.<<team-name>>-developer.name}"
   count      = "${length(var.developer_policy_arn)}"
   policy_arn = "${var.developer_policy_arn[count.index]}"
 }
 
 // tester role and policies
-resource "aws_iam_role" "cedc-tester" {
-  name = "cedc-tester"
+resource "aws_iam_role" "<<team-name>>-tester" {
+  name = "<<team-name>>-tester"
 
   assume_role_policy = <<EOF
 {
@@ -83,7 +83,7 @@ EOF
 }
 
 variable "tester_policy_arn" {
-  description = "IAM Policies for cedc-tester role"
+  description = "IAM Policies for <<team-name>>-tester role"
   type        = "list"
 
   default = ["arn:aws:iam::aws:policy/AmazonRoute53FullAccess",
@@ -93,14 +93,14 @@ variable "tester_policy_arn" {
 }
 
 resource "aws_iam_role_policy_attachment" "tester-policy-attachment" {
-  role       = "${aws_iam_role.cedc-tester.name}"
+  role       = "${aws_iam_role.<<team-name>>-tester.name}"
   count      = "${length(var.tester_policy_arn)}"
   policy_arn = "${var.tester_policy_arn[count.index]}"
 }
 
 // billing role and policy
-resource "aws_iam_role" "cedc-billing" {
-  name = "cedc-billing"
+resource "aws_iam_role" "<<team-name>>-billing" {
+  name = "<<team-name>>-billing"
 
   assume_role_policy = <<EOF
 {
@@ -120,7 +120,7 @@ EOF
 }
 
 resource "aws_iam_role_policy_attachment" "billing-policy-attachment" {
-  role       = "${aws_iam_role.cedc-billing.name}"
+  role       = "${aws_iam_role.<<team-name>>-billing.name}"
   policy_arn = "arn:aws:iam::aws:policy/job-function/Billing"
 }
 

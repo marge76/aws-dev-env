@@ -1,12 +1,8 @@
 - name: Move JDK installation file over to EC2
-  copy:
-    src: "jdk-8u211-linux-x64.rpm"
-    dest: /tmp
-
-- name: install jdk
   yum:
-    name: /tmp/jdk-8u211-linux-x64.rpm
-    state: present
+    name: "java-1.8.0-openjdk-devel"
+    state: latest
+
 ####################################
 
 ########## Install and run Jenkins ##############
@@ -30,15 +26,6 @@
   lineinfile: dest=/etc/sysconfig/jenkins
     regexp=^JENKINS_JAVA_OPTIONS=
     line=JENKINS_JAVA_OPTIONS="{{ jenkins.JAVA_OPTIONS }}"
-
-- name: Add HTTP proxy variables
-  lineinfile:
-    path: /home/centos/.bashrc
-    line: "{{ item.line }}"
-  with_items:
-    - { line: 'export HTTP_PROXY="http://{{ jenkins.proxy }}:{{ jenkins.proxy_http_port }}"' }
-    - { line: 'export HTTPS_PROXY="https://{{ jenkins.proxy }}:{{ jenkins.proxy_https_port }}"' }
-
 
 - name: start and enable jenkins on boot
   systemd:
@@ -125,33 +112,6 @@
   until: >
     'status' in jenkins_service_status and
     jenkins_service_status['status'] == 200
-
-- name: Install plugins
-  jenkins_plugin:
-    name: "{{ item }}"
-    url: "https://{{ ansible_facts.eth0.ipv4.address }}:8443"
-    validate_certs: false
-    url_username: "admin"
-    url_password: "{{ jenkinsAdminPass }}"
-    force_basic_auth: yes
-  loop:
-    - audit-trail
-    - build-pipeline-plugin
-    - hashicorp-vault-pipeline
-    - jacoco
-    - jobConfigHistory
-    - nodejs
-    - openshift-client
-    - openshift-pipeline
-    - openshift-sync
-    - dependency-check-jenkins-plugin
-    - dependency-track
-    - workflow-multibranch
-    - pipeline-multibranch-defaults
-    - role-strategy
-    - sbt
-    - sonar
-    - stashNotifier
 
 - name: restart jenkins
   systemd:

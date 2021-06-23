@@ -32,7 +32,7 @@
 
 - name: Download Vault
   unarchive:
-    src: https://releases.hashicorp.com/vault/0.11.4/vault_0.11.4_linux_amd64.zip
+    src: https://releases.hashicorp.com/vault/1.3.2/vault_1.3.2_linux_amd64.zip
     dest: /usr/bin
     remote_src: yes
 
@@ -427,7 +427,8 @@
   fetch:
     src: /tmp/{{ item }}
     dest: /home/{{ workspaceUser }}/SecureFiles
-  with_items: keyFile.json
+  with_items:
+    - keyFile.json
     - intermediate_cert.crt
     - okd_ca_cert.crt
     - okd_ca_key.key

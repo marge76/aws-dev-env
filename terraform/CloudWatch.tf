@@ -1,12 +1,12 @@
 resource "aws_flow_log" "west-2-tools-flow-log" {
-  iam_role_arn    = "${aws_iam_role.cedc-flow-logger.arn}"
+  iam_role_arn    = "${aws_iam_role.<<team-name>>-flow-logger.arn}"
   log_destination = "${aws_cloudwatch_log_group.cw-eu-west-2-tools.arn}"
   traffic_type    = "ALL"
   vpc_id          = "${aws_vpc.vpc-eu-west-2-tools.id}"
 }
 
 resource "aws_flow_log" "west-2-workspaces-flow-log" {
-  iam_role_arn    = "${aws_iam_role.cedc-flow-logger.arn}"
+  iam_role_arn    = "${aws_iam_role.<<team-name>>-flow-logger.arn}"
   log_destination = "${aws_cloudwatch_log_group.cw-eu-west-2-workspaces.arn}"
   traffic_type    = "ALL"
   vpc_id          = "${aws_vpc.vpc-eu-west-2-workspaces.id}"
@@ -20,8 +20,8 @@ resource "aws_cloudwatch_log_group" "cw-eu-west-2-workspaces" {
   name = "cw-eu-west-2-workspaces"
 }
 
-resource "aws_iam_role" "cedc-flow-logger" {
-  name = "cedc-flow-logger"
+resource "aws_iam_role" "<<team-name>>-flow-logger" {
+  name = "<<team-name>>-flow-logger"
 
   assume_role_policy = <<EOF
 {
@@ -42,7 +42,7 @@ EOF
 
 resource "aws_iam_role_policy" "cw-role-policy" {
   name = "cw-role-policy"
-  role = "${aws_iam_role.cedc-flow-logger.id}"
+  role = "${aws_iam_role.<<team-name>>-flow-logger.id}"
 
   policy = <<EOF
 {
@@ -75,7 +75,6 @@ resource "aws_cloudwatch_metric_alarm" "bitbucket-cpu-utilisation" {
   statistic           = "Average"
   threshold           = "95"
   alarm_description   = "This metric monitors ec2 cpu utilization"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-tools-bitbucket.id}"
@@ -92,7 +91,6 @@ resource "aws_cloudwatch_metric_alarm" "confluence-cpu-utilisation" {
   statistic           = "Average"
   threshold           = "95"
   alarm_description   = "This metric monitors ec2 cpu utilization"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-tools-confluence.id}"
@@ -109,7 +107,6 @@ resource "aws_cloudwatch_metric_alarm" "jira-cpu-utilisation" {
   statistic           = "Average"
   threshold           = "95"
   alarm_description   = "This metric monitors ec2 cpu utilization"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-tools-jira.id}"
@@ -126,7 +123,6 @@ resource "aws_cloudwatch_metric_alarm" "jenkins-cpu-utilisation" {
   statistic           = "Average"
   threshold           = "95"
   alarm_description   = "This metric monitors ec2 cpu utilization"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2b-jenkins.id}"
@@ -143,7 +139,6 @@ resource "aws_cloudwatch_metric_alarm" "okd-master-cpu-utilisation" {
   statistic           = "Average"
   threshold           = "95"
   alarm_description   = "This metric monitors ec2 cpu utilization"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-okd-master.id}"
@@ -162,7 +157,6 @@ resource "aws_cloudwatch_metric_alarm" "okd-node-cpu-utilisation" {
   statistic           = "Average"
   threshold           = "95"
   alarm_description   = "This metric monitors ec2 cpu utilization"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-okd-node.id}"
@@ -181,7 +175,6 @@ resource "aws_cloudwatch_metric_alarm" "okd-cpu-utilisation" {
   statistic           = "Average"
   threshold           = "95"
   alarm_description   = "This metric monitors ec2 cpu utilization"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-okd.id}"
@@ -200,7 +193,6 @@ resource "aws_cloudwatch_metric_alarm" "vault-cpu-utilisation" {
   statistic           = "Average"
   threshold           = "95"
   alarm_description   = "This metric monitors ec2 cpu utilization"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-tools-vault.id}"
@@ -217,44 +209,9 @@ resource "aws_cloudwatch_metric_alarm" "admanage-cpu-utilisation" {
   statistic           = "Average"
   threshold           = "95"
   alarm_description   = "This metric monitors ec2 cpu utilization"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-tools-admanage.id}"
-  }
-}
-
-resource "aws_cloudwatch_metric_alarm" "squid-tools-cpu-utilisation" {
-  alarm_name          = "squid-tools-cpu-utilisation-checker-tf"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = "2"
-  metric_name         = "CPUUtilization"
-  namespace           = "AWS/EC2"
-  period              = "120"
-  statistic           = "Average"
-  threshold           = "95"
-  alarm_description   = "This metric monitors ec2 cpu utilization"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
-
-  dimensions {
-    InstanceId = "${aws_instance.ec2-eu-west-2a-squid-proxy-tools.id}"
-  }
-}
-
-resource "aws_cloudwatch_metric_alarm" "squid-workspace-cpu-utilisation" {
-  alarm_name          = "squid-workspace-cpu-utilisation-checker-tf"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = "2"
-  metric_name         = "CPUUtilization"
-  namespace           = "AWS/EC2"
-  period              = "120"
-  statistic           = "Average"
-  threshold           = "95"
-  alarm_description   = "This metric monitors ec2 cpu utilization"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
-
-  dimensions {
-    InstanceId = "${aws_instance.ec2-eu-west-2a-squid-proxy-workspace.id}"
   }
 }
 
@@ -270,7 +227,6 @@ resource "aws_cloudwatch_metric_alarm" "bitbucket-credit-balance" {
   statistic           = "Average"
   threshold           = "500"
   alarm_description   = "This metric monitors an ec2's credit spending habits"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-tools-bitbucket.id}"
@@ -287,7 +243,6 @@ resource "aws_cloudwatch_metric_alarm" "confluence-credit-balance" {
   statistic           = "Average"
   threshold           = "500"
   alarm_description   = "This metric monitors an ec2's credit spending habits"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-tools-confluence.id}"
@@ -304,7 +259,6 @@ resource "aws_cloudwatch_metric_alarm" "jira-credit-balance" {
   statistic           = "Average"
   threshold           = "500"
   alarm_description   = "This metric monitors an ec2's credit spending habits"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-tools-jira.id}"
@@ -321,7 +275,6 @@ resource "aws_cloudwatch_metric_alarm" "jenkins-credit-balance" {
   statistic           = "Average"
   threshold           = "500"
   alarm_description   = "This metric monitors an ec2's credit spending habits"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2b-jenkins.id}"
@@ -338,7 +291,6 @@ resource "aws_cloudwatch_metric_alarm" "okd-master-credit-balance" {
   statistic           = "Average"
   threshold           = "500"
   alarm_description   = "This metric monitors an ec2's credit spending habits"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-okd-master.id}"
@@ -357,7 +309,6 @@ resource "aws_cloudwatch_metric_alarm" "okd-node-credit-balance" {
   statistic           = "Average"
   threshold           = "500"
   alarm_description   = "This metric monitors an ec2's credit spending habits"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-okd-node.id}"
@@ -376,7 +327,6 @@ resource "aws_cloudwatch_metric_alarm" "okd-credit-balance" {
   statistic           = "Average"
   threshold           = "500"
   alarm_description   = "This metric monitors an ec2's credit spending habits"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-okd.id}"
@@ -395,7 +345,6 @@ resource "aws_cloudwatch_metric_alarm" "vault-credit-balance" {
   statistic           = "Average"
   threshold           = "500"
   alarm_description   = "This metric monitors an ec2's credit spending habits"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-tools-vault.id}"
@@ -412,43 +361,8 @@ resource "aws_cloudwatch_metric_alarm" "admanage-credit-balance" {
   statistic           = "Average"
   threshold           = "500"
   alarm_description   = "This metric monitors an ec2's credit spending habits"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
 
   dimensions {
     InstanceId = "${aws_instance.ec2-eu-west-2a-tools-admanage.id}"
-  }
-}
-
-resource "aws_cloudwatch_metric_alarm" "squid-tools-credit-balance" {
-  alarm_name          = "squid-tools-credit-balance-checker-tf"
-  comparison_operator = "LessThanOrEqualToThreshold"
-  evaluation_periods  = "5"
-  metric_name         = "CPUCreditBalance"
-  namespace           = "AWS/EC2"
-  period              = "120"
-  statistic           = "Average"
-  threshold           = "500"
-  alarm_description   = "This metric monitors an ec2's credit spending habits"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
-
-  dimensions {
-    InstanceId = "${aws_instance.ec2-eu-west-2a-squid-proxy-tools.id}"
-  }
-}
-
-resource "aws_cloudwatch_metric_alarm" "squid-workspace-credit-balance" {
-  alarm_name          = "squid-workspace-credit-balance-checker-tf"
-  comparison_operator = "LessThanOrEqualToThreshold"
-  evaluation_periods  = "5"
-  metric_name         = "CPUCreditBalance"
-  namespace           = "AWS/EC2"
-  period              = "120"
-  statistic           = "Average"
-  threshold           = "500"
-  alarm_description   = "This metric monitors an ec2's credit spending habits"
-  alarm_actions       = ["${aws_sns_topic.cloudwatch-alarms-mailing-list.arn}"]
-
-  dimensions {
-    InstanceId = "${aws_instance.ec2-eu-west-2a-squid-proxy-workspace.id}"
   }
 }

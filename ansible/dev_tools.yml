@@ -4,59 +4,12 @@
     - bitbucket-server
     - confluence-server
     - jenkins-server
-    - squid-proxy-tools
-    - squid-proxy-workspace
   gather_facts: true
   become: true
   serial: 1
   tasks:
     - import_role:
         name: ssm-cloudwatch
-- name: Install Squid Proxy for tools
-  hosts: squid-proxy-tools
-  gather_facts: true
-  become: true
-  serial: 1
-  tasks:
-    - import_role:
-        name: squid-proxy
-
-- name: Install Squid's root certificates to all tools EC2s
-  hosts:
-    - jira-server
-    - bitbucket-server
-    - confluence-server
-    - jenkins-server
-  gather_facts: true
-  become: true
-  serial: 1
-  tasks:
-    - import_role:
-        name: squid_certification_tools
-
-- name: Install Squid's root certificates to Workspaces
-  hosts:
-    - workspaces
-    - localworkspace
-  gather_facts: true
-  become: true
-  serial: 1
-  tasks:
-    - import_role:
-        name: squid_certification_workspaces
-
-- name: Change Squid proxy Server's setting to intercept all traffic
-  hosts:
-    - squid-proxy-tools
-    - squid-proxy-workspace
-  gather_facts: true
-  become: true
-  serial: 1
-  tasks:
-    - import_role:
-        name: squid-proxy-lockdown
-
-#### ALL TRAFFIC FLOWS THROUGH SQUID FROM THIS POINT ####
 
 - name: Install common tools
   hosts:
@@ -65,7 +18,6 @@
     - confluence-server
     - vault-server
     - jenkins-server
-    - squid-proxy
   gather_facts: true
   become: true
   tasks:
@@ -102,13 +54,13 @@
     - import_role:
         name: vault
 
-- name: Install Confluence
-  hosts: confluence-server
+- name: Install Jenkins
+  hosts: jenkins-server
   gather_facts: true
   become: true
   tasks:
     - import_role:
-        name: confluence
+        name: jenkins
 
 - name: Install BitBucket
   hosts: bitbucket-server
@@ -126,13 +78,13 @@
     - import_role:
         name: jira
 
-- name: Install Jenkins
-  hosts: jenkins-server
+- name: Install Confluence
+  hosts: confluence-server
   gather_facts: true
   become: true
   tasks:
     - import_role:
-        name: jenkins
+        name: confluence
 
 - name: Install Workspace tools
   hosts: workspaces

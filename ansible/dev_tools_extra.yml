@@ -1,0 +1,15 @@
+- name: Install Jira
+  hosts: jira-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: jira
+
+- name: Install Confluence
+  hosts: confluence-server
+  gather_facts: true
+  become: true
+  tasks:
+    - import_role:
+        name: confluence

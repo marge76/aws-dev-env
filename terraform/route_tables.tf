@@ -20,6 +20,16 @@ resource "aws_route_table" "eu-west-2a-public-to-igw" {
     gateway_id = "${aws_internet_gateway.igw-eu-west-2a-2b.id}"
   }
 
+  route {
+    cidr_block                = "${var.test-vpc["cidr"]}"
+    vpc_peering_connection_id = "${aws_vpc_peering_connection.peering-workspace-to-vpc-eu-west-2a-test.id}"
+  }
+
+  route {
+    cidr_block                = "${var.tools-vpc["cidr"]}"
+    vpc_peering_connection_id = "${aws_vpc_peering_connection.peering-workspace-to-vpc-eu-west-2-tools.id}"
+  }
+
   tags = {
     Name    = "eu-west-2a-public->IGW"
     Managed = "Managed By Terraform"
@@ -32,6 +42,16 @@ resource "aws_route_table" "eu-west-2a-workspace-private" {
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = "${aws_nat_gateway.natgw-eu-west2a-pub-workspaces.id}"
+  }
+
+  route {
+    cidr_block                = "${var.test-vpc["cidr"]}"
+    vpc_peering_connection_id = "${aws_vpc_peering_connection.peering-workspace-to-vpc-eu-west-2a-test.id}"
+  }
+
+  route {
+    cidr_block                = "${var.tools-vpc["cidr"]}"
+    vpc_peering_connection_id = "${aws_vpc_peering_connection.peering-workspace-to-vpc-eu-west-2-tools.id}"
   }
 
   tags = {
@@ -48,6 +68,16 @@ resource "aws_route_table" "eu-west-2a-private" {
     gateway_id = "${aws_nat_gateway.natgw-eu-west2a-pub-tools.id}"
   }
 
+  route {
+    cidr_block                = "${var.test-vpc["cidr"]}"
+    vpc_peering_connection_id = "${aws_vpc_peering_connection.peering-tools-to-vpc-eu-west-2b-test.id}"
+  }
+
+  route {
+    cidr_block                = "${var.workspace-vpc["cidr"]}"
+    vpc_peering_connection_id = "${aws_vpc_peering_connection.peering-workspace-to-vpc-eu-west-2-tools.id}"
+  }
+
   tags = {
     Name    = "eu-west-2a-private"
     Managed = "Managed By Terraform"
@@ -60,6 +90,16 @@ resource "aws_route_table" "eu-west-2b-private" {
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = "${aws_nat_gateway.natgw-eu-west2a-pub-tools.id}"
+  }
+
+  route {
+    cidr_block                = "${var.test-vpc["cidr"]}"
+    vpc_peering_connection_id = "${aws_vpc_peering_connection.peering-tools-to-vpc-eu-west-2b-test.id}"
+  }
+
+  route {
+    cidr_block                = "${var.workspace-vpc["cidr"]}"
+    vpc_peering_connection_id = "${aws_vpc_peering_connection.peering-workspace-to-vpc-eu-west-2-tools.id}"
   }
 
   tags = {
@@ -90,6 +130,16 @@ resource "aws_route_table" "test-eu-west-2-private" {
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = "${aws_nat_gateway.natgw-eu-west2a-pub-test.id}"
+  }
+
+  route {
+    cidr_block                = "${var.workspace-vpc["cidr"]}"
+    vpc_peering_connection_id = "${aws_vpc_peering_connection.peering-workspace-to-vpc-eu-west-2a-test.id}"
+  }
+
+  route {
+    cidr_block                = "${var.tools-vpc["cidr"]}"
+    vpc_peering_connection_id = "${aws_vpc_peering_connection.peering-tools-to-vpc-eu-west-2b-test.id}"
   }
 
   tags = {

@@ -1,8 +1,8 @@
-# ---
-# - name: update yum
-#   yum:
-#     name: "*"
-#     state: latest
+---
+- name: update yum
+  yum:
+    name: "*"
+    state: latest
 
 - name: remove existing pexpect v2.3
   yum:
@@ -22,6 +22,11 @@
 - name: install rsync
   yum:
     name: rsync
+    state: latest
+
+- name: install boto3
+  pip:
+    name: boto3
     state: latest
 
 ############### Setup JQ ###############
