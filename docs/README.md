@@ -90,4 +90,4 @@ Each pathway must be followed in sequential order.
 ||**&#8595;**
 ||[Additional AWS Setup](additional-aws-setup.md) | |
 ||[First Time Setup of Tools](first-time-tools-setup.md)
-||[First Time Setup of WorkSpaces](first-time-WorkSpaces-setup.md)
+||[First Time Setup of WorkSpaces](first-time-workspaces-setup.md)
